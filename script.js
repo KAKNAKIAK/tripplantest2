@@ -71,12 +71,12 @@ function showToastMessage(message, isError = false) {
     if (isError) {
         toast.style.backgroundColor = 'red';
     } else {
-        toast.style.backgroundColor = ''; // Reset to default or specific non-error color
+        toast.style.backgroundColor = '';
     }
     toast.classList.remove('opacity-0');
     setTimeout(() => {
         toast.classList.add('opacity-0');
-        if (isError) toast.style.backgroundColor = ''; // Reset after fading out
+        if (isError) toast.style.backgroundColor = '';
     }, 3000);
 }
 
@@ -326,7 +326,6 @@ function parseAndValidateDateInput(inputValue) {
     return null;
 }
 
-
 function recalculateAllDates() {
     if (tripData.days.length > 0) {
         let currentDate = new Date(tripData.days[0].date + "T00:00:00");
@@ -379,7 +378,6 @@ function handleToggleDayCollapse(event) {
     if (dayContentWrapper) dayContentWrapper.classList.toggle('hidden', day.isCollapsed);
     if (toggleButtonElement) { toggleButtonElement.innerHTML = day.isCollapsed ? collapsedIcon : expandedIcon; }
 }
-
 
 // --- Activity Modal Logic ---
 function handleOpenActivityModalForNew(event) { const dayIdx = event.currentTarget.dataset.dayIndex; modalTitle.textContent = '새 일정 추가'; activityForm.reset(); populateIconDropdown(); activityIconSelect.value = travelEmojis[0].value; activityTimeInput.value = ''; activityIdInput.value = ''; dayIndexInput.value = dayIdx; activityModal.classList.remove('hidden'); }
@@ -467,7 +465,7 @@ function generateReadOnlyDayView(dayData, dayNumber) {
     `;
 }
 
-// --- Function to generate Read-Only HTML View String for the entire trip ---
+// --- Function to generate Read-Only HTML View String for the entire trip (for Save HTML feature) ---
 function generateReadOnlyHTMLView(data) {
     let daysHTML = '';
     data.days.forEach((day, dayIndex) => {
@@ -491,11 +489,10 @@ function generateReadOnlyHTMLView(data) {
                     </div>
                 </div>`;
         });
-         const expandedIcon = `<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+        const expandedIcon = `<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
         const collapsedIcon = `<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
-        const isDayCollapsedInSavedView = true;
+        const isDayCollapsedInSavedView = true; // Default to collapsed for saved HTML
         const dayHeaderId = `day-header-readonly-trip-${dayIndex}`;
-
 
         daysHTML += `
             <div class="day-section bg-white shadow-sm rounded-md">
@@ -533,78 +530,81 @@ function generateReadOnlyHTMLView(data) {
 }
 
 // --- HTML Save/Load ---
-saveHtmlButton.addEventListener('click', () => {
-    const tripDataToSave = JSON.parse(JSON.stringify(tripData));
-    tripDataToSave.days.forEach(day => day.isCollapsed = true);
-    tripDataToSave.editingTitle = false;
+if (saveHtmlButton) {
+    saveHtmlButton.addEventListener('click', () => {
+        const tripDataToSave = JSON.parse(JSON.stringify(tripData));
+        tripDataToSave.days.forEach(day => day.isCollapsed = true);
+        tripDataToSave.editingTitle = false;
 
-    const tripDataString = JSON.stringify(tripData);
-    const safeTripDataString = tripDataString.replace(/<\/script>/g, '<\\/script>');
-    const readOnlyViewHTML = generateReadOnlyHTMLView(tripDataToSave);
+        const tripDataString = JSON.stringify(tripData);
+        const safeTripDataString = tripDataString.replace(/<\/script>/g, '<\\/script>');
+        const readOnlyViewHTML = generateReadOnlyHTMLView(tripDataToSave);
 
-    let styles = "";
-    const styleLink = document.querySelector('link[href="style.css"]');
-    if (styleLink && styleLink.sheet) {
-        try {
-            Array.from(styleLink.sheet.cssRules).forEach(rule => {
-                styles += rule.cssText + '\n';
-            });
-        } catch (e) {
-            console.warn("Could not access linked stylesheet rules for saving HTML. Styles might be incomplete.", e);
-            styles = "/* CSS rules could not be fully embedded. Please ensure style.css is accessible. */";
+        let styles = "";
+        const styleLink = document.querySelector('link[href="style.css"]');
+        if (styleLink && styleLink.sheet) {
+            try {
+                Array.from(styleLink.sheet.cssRules).forEach(rule => {
+                    styles += rule.cssText + '\n';
+                });
+            } catch (e) {
+                console.warn("Could not access linked stylesheet rules for saving HTML. Styles might be incomplete.", e);
+                styles = "/* CSS rules could not be fully embedded. Please ensure style.css is accessible. */";
+            }
+        } else {
+            styles = "/* Styles from style.css were not loaded. */";
         }
-    } else {
-        styles = "/* Styles from style.css were not loaded. */";
-    }
 
-    const tailwindCDN = '<script src="https://cdn.tailwindcss.com"><\/script>';
-    const googleFontLink = '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">';
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="ko">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>여행 일정: ${tripData.title}</title>
-            ${tailwindCDN}
-            ${googleFontLink}
-            <style>
-                body { font-family: 'Noto Sans KR', sans-serif; background-color: #F8F9FA; }
-                ${styles}
-                .day-header-container[onclick] { cursor: pointer; }
-                .day-header-container[onclick]:hover { background-color: #f0f0f0; }
-            </style>
-        </head>
-        <body class="text-gray-800">
-            ${readOnlyViewHTML}
-            <script type="application/json" id="embeddedTripData">
-                ${safeTripDataString}
-            <\/script>
-            <script>
-                function toggleDayView(headerElement) {
-                    const contentWrapper = headerElement.nextElementSibling;
-                    const toggleButtonSpan = headerElement.querySelector('.day-toggle-button-static');
-                    if (contentWrapper && toggleButtonSpan) {
-                        const isHidden = contentWrapper.classList.toggle('hidden');
-                        const expandedIconHTML = '<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
-                        const collapsedIconHTML = '<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
-                        toggleButtonSpan.innerHTML = isHidden ? collapsedIconHTML : expandedIconHTML;
+        const tailwindCDN = '<script src="https://cdn.tailwindcss.com"><\/script>';
+        const googleFontLink = '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">';
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>여행 일정: ${tripData.title}</title>
+                ${tailwindCDN}
+                ${googleFontLink}
+                <style>
+                    body { font-family: 'Noto Sans KR', sans-serif; background-color: #F8F9FA; }
+                    ${styles}
+                    .day-header-container[onclick] { cursor: pointer; }
+                    .day-header-container[onclick]:hover { background-color: #f0f0f0; }
+                </style>
+            </head>
+            <body class="text-gray-800">
+                ${readOnlyViewHTML}
+                <script type="application/json" id="embeddedTripData">
+                    ${safeTripDataString}
+                <\/script>
+                <script>
+                    function toggleDayView(headerElement) {
+                        const contentWrapper = headerElement.nextElementSibling;
+                        const toggleButtonSpan = headerElement.querySelector('.day-toggle-button-static');
+                        if (contentWrapper && toggleButtonSpan) {
+                            const isHidden = contentWrapper.classList.toggle('hidden');
+                            const expandedIconHTML = '<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+                            const collapsedIconHTML = '<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
+                            toggleButtonSpan.innerHTML = isHidden ? collapsedIconHTML : expandedIconHTML;
+                        }
                     }
-                }
-            <\/script>
-        </body>
-        </html>`;
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const fileName = `여행일정_${tripData.title.replace(/[^a-z0-9가-힣]/gi, '_')}_${dateToYyyyMmDd(new Date())}.html`;
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    showToastMessage('읽기 전용 HTML 파일로 저장되었습니다.');
-});
+                <\/script>
+            </body>
+            </html>`;
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const fileName = `여행일정_${tripData.title.replace(/[^a-z0-9가-힣]/gi, '_')}_${dateToYyyyMmDd(new Date())}.html`;
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        showToastMessage('읽기 전용 HTML 파일로 저장되었습니다.');
+    });
+}
+
 
 loadHtmlButtonTrigger.addEventListener('click', () => { loadHtmlInput.click(); });
 loadHtmlInput.addEventListener('change', (event) => {
@@ -800,7 +800,7 @@ loadExcelInput.addEventListener('change', (event) => {
 
                     let formattedDate = "";
                     if (!rawDate) {
-                        errors.push(`${excelRowNumber}행: 날짜(A열)가 비어있습니다. 이 행을 건너<0xEB뛰니다>.`);
+                        errors.push(`${excelRowNumber}행: 날짜(A열)가 비어있습니다. 이 행을 건너뜁니다.`);
                         continue;
                     }
                     let parsedDate = null;
@@ -822,7 +822,7 @@ loadExcelInput.addEventListener('change', (event) => {
                     }
 
                     if (!title) {
-                        errors.push(`${excelRowNumber}행: 활동/장소명(C열)이 비어있습니다. 이 행을 건너<0xEB뛰니다>.`);
+                        errors.push(`${excelRowNumber}행: 활동/장소명(C열)이 비어있습니다. 이 행을 건너뜁니다.`);
                         continue;
                     }
 
@@ -966,7 +966,7 @@ function generateInlineStyledHTML(data) {
 
         daysHTML += `
             <div class="day-section" style="margin-bottom: 16px; border-radius: 0.375rem; background-color: #ffffff; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
-                <details open>
+                <details> 
                     <summary style="display: flex; align-items: center; padding: 12px 8px; border-bottom: 1px solid #EEE; background-color: #fdfdfd; border-radius: 6px 6px 0 0; cursor: pointer;">
                         <div class="day-header-main" style="display: flex; align-items: center; gap: 8px; flex-grow: 1;">
                             <h2 class="day-header-title" style="font-size: 16px; font-weight: 600;">${formatDateForInlineView(day.date, dayIndex + 1)}</h2>
@@ -1005,12 +1005,7 @@ function generateInlineStyledHTML(data) {
 
 // --- Initial Setup ---
 populateIconDropdown();
-if (saveHtmlButton) { // Ensure button exists before adding listener
-    saveHtmlButton.addEventListener('click', saveHtmlButton.onclick); // This seems like an error from previous code, should be handleSaveHtml or similar.
-                                                                   // The original code was `saveHtmlButton.addEventListener('click', () => { ... });`
-                                                                   // For now, I'll keep it as it was in the provided full script if it had a specific handler named `saveHtmlButton.onclick`.
-                                                                   // Rechecking, the saveHtmlButton had a direct event listener function.
-}
+
 if (copyInlineHtmlButton) {
     copyInlineHtmlButton.addEventListener('click', handleCopyInlineHtml);
 }
