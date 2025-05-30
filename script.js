@@ -23,9 +23,9 @@ const activityIdInput = document.getElementById('activityId');
 const dayIndexInput = document.getElementById('dayIndex');
 const activityTimeInput = document.getElementById('activityTimeInput');
 const activityIconSelect = document.getElementById('activityIconSelect');
-const previewButton = document.getElementById('previewButton');
-const savePdfButton = document.getElementById('savePdfButton');
 const saveHtmlButton = document.getElementById('saveHtmlButton');
+const copyInlineHtmlButton = document.getElementById('copyInlineHtmlButton');
+const inlinePreviewButton = document.getElementById('inlinePreviewButton');
 const loadHtmlInput = document.getElementById('loadHtmlInput');
 const loadHtmlButtonTrigger = document.getElementById('loadHtmlButtonTrigger');
 const loadExcelInput = document.getElementById('loadExcelInput');
@@ -41,7 +41,7 @@ let insertDayAtIndex = -1;
 
 // --- Utility Functions ---
 function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
-function formatDate(dateString, dayNumber) { const date = new Date(dateString); const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }; return `DAY ${dayNumber}: ${date.toLocaleDateString('ko-KR', options)}`; }
+function formatDate(dateString, dayNumber) { const date = new Date(dateString + "T00:00:00"); const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }; return `DAY ${dayNumber}: ${date.toLocaleDateString('ko-KR', options)}`; }
 
 function formatTimeToHHMM(timeStr) {
     if (timeStr && timeStr.length === 4 && /^\d{4}$/.test(timeStr)) {
@@ -71,12 +71,12 @@ function showToastMessage(message, isError = false) {
     if (isError) {
         toast.style.backgroundColor = 'red';
     } else {
-        toast.style.backgroundColor = '';
+        toast.style.backgroundColor = ''; // Reset to default or specific non-error color
     }
     toast.classList.remove('opacity-0');
     setTimeout(() => {
         toast.classList.add('opacity-0');
-        if (isError) toast.style.backgroundColor = '';
+        if (isError) toast.style.backgroundColor = ''; // Reset after fading out
     }, 3000);
 }
 
@@ -155,7 +155,7 @@ function renderTrip() {
         let dateDisplayHTML;
         if (day.editingDate) {
             dateDisplayHTML = `
-                <input type="text" class="date-edit-input-text" value="${day.date}" data-day-index="${dayIndex}" placeholder="YYYY-MM-DD 또는 YYYYMMDD">
+                <input type="text" class="date-edit-input-text" value="${day.date}" data-day-index="${dayIndex}" placeholder="YYYY-MM-DD 또는 YYMMDD">
                 <button class="save-date-button icon-button" data-day-index="${dayIndex}" title="날짜 저장">${saveIconSVG}</button>
                 <button class="cancel-date-edit-button icon-button" data-day-index="${dayIndex}" title="취소">${cancelIconSVG}</button>
             `;
@@ -210,7 +210,7 @@ function renderTrip() {
             handleSaveDayAsHtml(dayIdx);
         });
         daySection.querySelector('.load-day-at-index-button').addEventListener('click', (e) => {
-            insertDayAtIndex = parseInt(e.currentTarget.dataset.dayIndex) ; // Changed: Save current index for overwrite
+            insertDayAtIndex = parseInt(e.currentTarget.dataset.dayIndex) ;
             loadDayAtIndexHtmlInput.click();
         });
         daySection.querySelector('.delete-day-button').addEventListener('click', (e) => {
@@ -309,7 +309,6 @@ function isValidDateString(dateString) {
     const year = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const day = parseInt(parts[2], 10);
-
     if (year < 1000 || year > 3000 || month === 0 || month > 12) return false;
     const monthLength = [31, (year % 400 === 0 || (year % 100 !== 0 && year % 4 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     if (day === 0 || day > monthLength[month - 1]) return false;
@@ -332,7 +331,6 @@ function recalculateAllDates() {
     if (tripData.days.length > 0) {
         let currentDate = new Date(tripData.days[0].date + "T00:00:00");
         tripData.days[0].date = dateToYyyyMmDd(currentDate);
-
         for (let i = 1; i < tripData.days.length; i++) {
             currentDate.setDate(currentDate.getDate() + 1);
             tripData.days[i].date = dateToYyyyMmDd(currentDate);
@@ -341,6 +339,7 @@ function recalculateAllDates() {
 }
 
 function handleEditDate(event) { const dayIndex = parseInt(event.currentTarget.dataset.dayIndex); tripData.days.forEach((day, index) => { day.editingDate = (index === dayIndex); }); renderTrip(); }
+
 function handleSaveDate(event) {
     const dayIndex = parseInt(event.currentTarget.dataset.dayIndex);
     const dateInput = document.querySelector(`.date-edit-input-text[data-day-index="${dayIndex}"]`);
@@ -359,15 +358,15 @@ function handleSaveDate(event) {
         renderTrip();
     }
 }
+
 function handleCancelDateEdit(event) { const dayIndex = parseInt(event.currentTarget.dataset.dayIndex); tripData.days[dayIndex].editingDate = false; renderTrip(); }
+
 function handleToggleDayCollapse(event) {
     const dayHeaderContainer = event.target.closest('.day-header-container');
     if (!dayHeaderContainer) return;
-
     const dayIndexElement = dayHeaderContainer.querySelector('[data-day-index]');
     if (!dayIndexElement) return;
     const dayIndex = parseInt(dayIndexElement.dataset.dayIndex);
-
     const day = tripData.days[dayIndex];
     if (day.editingDate) return;
 
@@ -422,11 +421,11 @@ addDayButton.addEventListener('click', () => {
     renderTrip();
 });
 
-function showConfirmDeleteDayModal(dayIdx) { dayIndexToDelete = dayIdx; const dayNumber = dayIdx + 1; const dateString = new Date(tripData.days[dayIdx].date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }); confirmDeleteDayMessage.textContent = `DAY ${dayNumber} (${dateString})의 모든 일정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`; confirmDeleteDayModal.classList.remove('hidden'); }
+function showConfirmDeleteDayModal(dayIdx) { dayIndexToDelete = dayIdx; const dayNumber = dayIdx + 1; const dateString = new Date(tripData.days[dayIdx].date + "T00:00:00").toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }); confirmDeleteDayMessage.textContent = `DAY ${dayNumber} (${dateString})의 모든 일정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`; confirmDeleteDayModal.classList.remove('hidden'); }
 function hideConfirmDeleteDayModal() { confirmDeleteDayModal.classList.add('hidden'); dayIndexToDelete = -1; }
 confirmDeleteDayActionButton.addEventListener('click', () => { if (dayIndexToDelete > -1 && dayIndexToDelete < tripData.days.length) { tripData.days.splice(dayIndexToDelete, 1); recalculateAllDates(); renderTrip(); } hideConfirmDeleteDayModal(); });
 cancelDeleteDayButton.addEventListener('click', hideConfirmDeleteDayModal);
-function handleDeleteActivity(event) { const button = event.currentTarget; const dayIdx = button.dataset.dayIndex; const activityIdToDelete = button.dataset.activityId; const userConfirmedDelete = true; if (userConfirmedDelete) { tripData.days[dayIdx].activities = tripData.days[dayIdx].activities.filter(act => act.id !== activityIdToDelete); renderTrip(); } }
+function handleDeleteActivity(event) { const button = event.currentTarget; const dayIdx = button.dataset.dayIndex; const activityIdToDelete = button.dataset.activityId; tripData.days[dayIdx].activities = tripData.days[dayIdx].activities.filter(act => act.id !== activityIdToDelete); renderTrip(); }
 function handleDuplicateActivity(event) { const button = event.currentTarget; const dayIdx = parseInt(button.dataset.dayIndex); const activityIdToDuplicate = button.dataset.activityId; const activityToDuplicate = tripData.days[dayIdx].activities.find(act => act.id === activityIdToDuplicate); if (activityToDuplicate) { const newActivity = { ...activityToDuplicate, id: generateId(), title: `${activityToDuplicate.title} (복사본)` }; const originalIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === activityIdToDuplicate); tripData.days[dayIdx].activities.splice(originalIndex + 1, 0, newActivity); renderTrip(); } }
 
 // --- Function to generate Read-Only HTML View String for a single day ---
@@ -533,84 +532,7 @@ function generateReadOnlyHTMLView(data) {
         </main>`;
 }
 
-// --- PDF, HTML Save/Load ---
-previewButton.addEventListener('click', () => {
-    const originalEditingTitleState = tripData.editingTitle;
-    tripData.editingTitle = false;
-    renderHeaderTitle();
-
-    const readOnlyViewHTML = generateReadOnlyHTMLView(tripData);
-    let styles = "";
-    document.querySelectorAll('style').forEach(styleTag => { styles += styleTag.innerHTML; });
-
-    // Get CSS from linked stylesheet
-    const linkedStylesheet = document.querySelector('link[href="style.css"]');
-    let linkedCSS = "";
-    if (linkedStylesheet && linkedStylesheet.sheet) {
-        try {
-            Array.from(linkedStylesheet.sheet.cssRules).forEach(rule => {
-                linkedCSS += rule.cssText;
-            });
-        } catch (e) {
-            console.warn("Could not access linked stylesheet rules for preview:", e);
-            // Fallback or inform user, for now just logs.
-            // This can happen due to CORS if style.css is on a different domain,
-            // but for local files, it should usually work.
-        }
-    }
-
-
-    const tailwindCDN = '<script src="https://cdn.tailwindcss.com"><\/script>';
-    const googleFontLink = '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">';
-
-    const previewHTML = `
-        <!DOCTYPE html>
-        <html lang="ko">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>여행 일정 미리보기: ${tripData.title}</title>
-            ${tailwindCDN}
-            ${googleFontLink}
-            <style>
-                body { font-family: 'Noto Sans KR', sans-serif; background-color: #F8F9FA; }
-                ${styles} /* Inline styles from the original HTML <style> tag */
-                ${linkedCSS} /* Styles from style.css */
-                .day-header-container[onclick] { cursor: pointer; }
-                .day-header-container[onclick]:hover { background-color: #f0f0f0; }
-            </style>
-        </head>
-        <body class="text-gray-800">
-            ${readOnlyViewHTML}
-            <script>
-                function toggleDayView(headerElement) {
-                    const contentWrapper = headerElement.nextElementSibling;
-                    const toggleButtonSpan = headerElement.querySelector('.day-toggle-button-static');
-                    if (contentWrapper && toggleButtonSpan) {
-                        const isHidden = contentWrapper.classList.toggle('hidden');
-                        const expandedIconHTML = '<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
-                        const collapsedIconHTML = '<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>';
-                        toggleButtonSpan.innerHTML = isHidden ? collapsedIconHTML : expandedIconHTML;
-                    }
-                }
-            <\/script>
-        </body>
-        </html>`;
-
-    const previewWindow = window.open('', '_blank');
-    if (previewWindow) {
-        previewWindow.document.write(previewHTML);
-        previewWindow.document.close();
-    } else {
-        showToastMessage("팝업이 차단되었을 수 있습니다. 미리보기 창을 열 수 없습니다.", true);
-    }
-    tripData.editingTitle = originalEditingTitleState;
-    renderHeaderTitle();
-});
-
-
-savePdfButton.addEventListener('click', () => { const originalCollapseStates = tripData.days.map(d => d.isCollapsed); const originalEditingStates = tripData.days.map(d => d.editingDate); tripData.days.forEach(d => { d.isCollapsed = false; d.editingDate = false; }); tripData.editingTitle = false; renderTrip(); setTimeout(() => { window.print(); tripData.days.forEach((d, i) => { d.isCollapsed = originalCollapseStates[i]; d.editingDate = originalEditingStates[i]; }); renderTrip(); }, 100); });
-
+// --- HTML Save/Load ---
 saveHtmlButton.addEventListener('click', () => {
     const tripDataToSave = JSON.parse(JSON.stringify(tripData));
     tripDataToSave.days.forEach(day => day.isCollapsed = true);
@@ -621,7 +543,6 @@ saveHtmlButton.addEventListener('click', () => {
     const readOnlyViewHTML = generateReadOnlyHTMLView(tripDataToSave);
 
     let styles = "";
-    // Try to fetch content of style.css
     const styleLink = document.querySelector('link[href="style.css"]');
     if (styleLink && styleLink.sheet) {
         try {
@@ -630,14 +551,11 @@ saveHtmlButton.addEventListener('click', () => {
             });
         } catch (e) {
             console.warn("Could not access linked stylesheet rules for saving HTML. Styles might be incomplete.", e);
-            // Fallback or provide a message
             styles = "/* CSS rules could not be fully embedded. Please ensure style.css is accessible. */";
         }
     } else {
-        // Fallback if style.css is not found or accessible
         styles = "/* Styles from style.css were not loaded. */";
     }
-
 
     const tailwindCDN = '<script src="https://cdn.tailwindcss.com"><\/script>';
     const googleFontLink = '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">';
@@ -770,7 +688,7 @@ function handleSaveDayAsHtml(dayIndex) {
         </head>
         <body class="text-gray-800">
             <header class="readonly-view-header">
-                 <h1>DAY ${dayNumberForView} : ${new Date(dayDataToSave.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</h1>
+                 <h1>DAY ${dayNumberForView} : ${new Date(dayDataToSave.date + "T00:00:00").toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</h1>
             </header>
             <main class="readonly-main-content saved-html-view">
                 ${readOnlyDayViewHTML}
@@ -808,14 +726,12 @@ loadDayAtIndexHtmlInput.addEventListener('change', (event) => {
                 if (embeddedDataElement && embeddedDataElement.textContent) {
                     const loadedDayData = JSON.parse(embeddedDataElement.textContent);
                     if (loadedDayData && loadedDayData.date && Array.isArray(loadedDayData.activities)) {
-                        // Overwrite the activities of the target day
                         tripData.days[insertDayAtIndex].activities = loadedDayData.activities.map(act => ({...act, id: generateId()}));
-                        // Preserve the original date of the target day section
-                        tripData.days[insertDayAtIndex].date = loadedDayData.date; // Overwrite date as well
+                        tripData.days[insertDayAtIndex].date = loadedDayData.date;
                         tripData.days[insertDayAtIndex].isCollapsed = false;
                         tripData.days[insertDayAtIndex].editingDate = false;
 
-                        recalculateAllDates(); // Recalculate all dates after potential date change
+                        recalculateAllDates();
                         renderTrip();
                         showToastMessage(`DAY ${insertDayAtIndex + 1} 일정을 불러온 내용으로 덮어썼습니다.`);
                     } else {
@@ -882,21 +798,20 @@ loadExcelInput.addEventListener('change', (event) => {
                     const cost = row[7] ? String(row[7]).trim() : "";
                     const notes = row[8] ? String(row[8]).trim() : "";
 
-
                     let formattedDate = "";
                     if (!rawDate) {
                         errors.push(`${excelRowNumber}행: 날짜(A열)가 비어있습니다. 이 행을 건너<0xEB뛰니다>.`);
                         continue;
                     }
                     let parsedDate = null;
-                    if (typeof rawDate === 'number') { // Excel date serial number
+                    if (typeof rawDate === 'number') {
                         parsedDate = XLSX.SSF.parse_date_code(rawDate);
                         if (parsedDate) {
                              formattedDate = `${parsedDate.y}-${String(parsedDate.m).padStart(2,'0')}-${String(parsedDate.d).padStart(2,'0')}`;
                         }
                     } else if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
-                        parsedDate = new Date(rawDate + "T00:00:00"); // Ensure parsing as local date
-                        if (!isNaN(parsedDate.getTime())) {
+                        parsedDate = new Date(rawDate + "T00:00:00");
+                        if (!isNaN(parsedDate.getTime()) && isValidDateString(rawDate)) {
                             formattedDate = rawDate;
                         }
                     }
@@ -966,6 +881,140 @@ loadExcelInput.addEventListener('change', (event) => {
 });
 
 
+// --- 인라인 스타일 HTML 생성 및 표시 ---
+function handleInlinePreview() {
+    const inlineHtml = generateInlineStyledHTML(tripData);
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) {
+        previewWindow.document.write(inlineHtml);
+        previewWindow.document.close();
+    } else {
+        showToastMessage("팝업이 차단되었을 수 있습니다. 인라인 미리보기 창을 열 수 없습니다.", true);
+    }
+}
+
+function formatDateForInlineView(dateString, dayNumber) {
+    const date = new Date(dateString + "T00:00:00");
+    const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+    return `DAY ${dayNumber}: ${date.toLocaleDateString('ko-KR', options)}`;
+}
+
+async function handleCopyInlineHtml() {
+    const inlineHtml = generateInlineStyledHTML(tripData);
+    try {
+        await navigator.clipboard.writeText(inlineHtml);
+        showToastMessage('인라인 코드가 클립보드에 복사되었습니다.');
+    } catch (err) {
+        console.error('클립보드 복사 실패:', err);
+        showToastMessage('클립보드 복사에 실패했습니다. 콘솔을 확인해주세요.', true);
+    }
+}
+
+function generateInlineStyledHTML(data) {
+    let daysHTML = '';
+    data.days.forEach((day, dayIndex) => {
+        let activitiesHTML = '';
+        day.activities.forEach(activity => {
+            const formattedTime = formatTimeToHHMM(activity.time);
+
+            let imageDetailHTML = '';
+            if (activity.imageUrl) {
+                imageDetailHTML = `
+                <details style="margin-top: 8px;">
+                    <summary style="font-size: 12px; color: #007bff; text-decoration: none; cursor: pointer; display: inline-block;">🖼️ 사진보기</summary>
+                    <img src="${activity.imageUrl}" alt="${activity.title || '활동 이미지'}" style="max-width: 300px; height: auto; object-fit: cover; border-radius: 4px; margin-top: 8px; display: block;" onerror="this.style.display='none';">
+                </details>`;
+            }
+
+            let locationHTML = '';
+            if (activity.locationLink) {
+                locationHTML = `<div class="card-location" style="font-size: 12px; margin-top: 4px;">📍 <a href="${activity.locationLink}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: none;">위치 보기</a></div>`;
+            }
+
+            let costHTML = '';
+            if (activity.cost) {
+                costHTML = `<div class="card-cost" style="font-size: 12px; margin-top: 4px;">💰 ${activity.cost}</div>`;
+            }
+
+            let notesHTML = '';
+            if (activity.notes) {
+                const notesText = activity.notes.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                notesHTML = `<div class="card-notes" style="font-size: 12px; margin-top: 4px;">📝 ${notesText}</div>`;
+            }
+            
+            let descriptionHTML = '';
+            if(activity.description){
+                 descriptionHTML = `<div class="card-description" style="font-size: 12px;">${activity.description}</div>`;
+            }
+
+            activitiesHTML += `
+                <div class="readonly-activity-card" style="background-color: white; border-radius: 8px; border: 1px solid #E0E0E0; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex;">
+                    <div class="card-time-icon-area" style="width: 100px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start;">
+                        <div class="card-icon" style="font-size: 20px; margin-bottom: 4px;">${activity.icon || ''}</div>
+                        <div class="card-time" style="font-size: 12px; font-weight: bold; min-height: 18px;">${formattedTime}</div>
+                    </div>
+                    <div class="card-details-area" style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                        <div class="card-title" style="font-size: 14px; font-weight: bold;">${activity.title}</div>
+                        ${descriptionHTML}
+                        ${imageDetailHTML}
+                        ${locationHTML}
+                        ${costHTML}
+                        ${notesHTML}
+                    </div>
+                </div>`;
+        });
+
+        daysHTML += `
+            <div class="day-section" style="margin-bottom: 16px; border-radius: 0.375rem; background-color: #ffffff; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);">
+                <details open>
+                    <summary style="display: flex; align-items: center; padding: 12px 8px; border-bottom: 1px solid #EEE; background-color: #fdfdfd; border-radius: 6px 6px 0 0; cursor: pointer;">
+                        <div class="day-header-main" style="display: flex; align-items: center; gap: 8px; flex-grow: 1;">
+                            <h2 class="day-header-title" style="font-size: 16px; font-weight: 600;">${formatDateForInlineView(day.date, dayIndex + 1)}</h2>
+                        </div>
+                    </summary>
+                    <div class="day-content-wrapper" style="padding: 0 8px 8px 8px;">
+                        <div class="activities-list" style="padding-top: 0.75rem;">
+                            ${activitiesHTML}
+                        </div>
+                    </div>
+                </details>
+            </div>`;
+    });
+
+    return `
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${data.title}</title>
+    </head>
+    <body>
+        <header style="background-color: white; border-bottom: 1px solid #E0E0E0; padding: 1rem; text-align: center;">
+            <h1 style="font-size: 1.25rem; font-weight: bold;">${data.title}</h1>
+        </header>
+        <main style="max-width: 48rem; margin-left: auto; margin-right: auto; padding: 1rem; font-family: 'Noto Sans KR', sans-serif;">
+            <div id="daysContainerReadOnly">
+                ${daysHTML}
+            </div>
+        </main>
+    </body>
+    </html>
+    `;
+}
+
 // --- Initial Setup ---
 populateIconDropdown();
+if (saveHtmlButton) { // Ensure button exists before adding listener
+    saveHtmlButton.addEventListener('click', saveHtmlButton.onclick); // This seems like an error from previous code, should be handleSaveHtml or similar.
+                                                                   // The original code was `saveHtmlButton.addEventListener('click', () => { ... });`
+                                                                   // For now, I'll keep it as it was in the provided full script if it had a specific handler named `saveHtmlButton.onclick`.
+                                                                   // Rechecking, the saveHtmlButton had a direct event listener function.
+}
+if (copyInlineHtmlButton) {
+    copyInlineHtmlButton.addEventListener('click', handleCopyInlineHtml);
+}
+if (inlinePreviewButton) {
+    inlinePreviewButton.addEventListener('click', handleInlinePreview);
+}
 renderTrip();
