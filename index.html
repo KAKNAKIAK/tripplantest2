@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모바일 추천일정표</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-gray-800">
+
+    <header class="header sticky top-0 z-50 py-3 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center h-[60px]">
+            <div id="headerTitleSection" class="header-title-container">
+                <!-- Title will be rendered here by JavaScript -->
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="previewButton" class="action-button bg-purple-500 text-white hover:bg-purple-600" title="미리보기">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <span class="hidden sm:inline">미리보기</span>
+                </button>
+                <button id="savePdfButton" class="action-button bg-blue-500 text-white hover:bg-blue-600" title="PDF로 저장">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16"y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <span class="hidden sm:inline">PDF 저장</span>
+                </button>
+                <button id="saveHtmlButton" class="action-button bg-orange-500 text-white hover:bg-orange-600" title="HTML 파일로 저장">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13H7v8"></polyline><polyline points="7 3 7 8H3"></polyline></svg>
+                    <span class="hidden sm:inline">HTML 저장</span>
+                </button>
+                <input type="file" id="loadHtmlInput" accept=".html" style="display: none;">
+                <button id="loadHtmlButtonTrigger" class="action-button bg-yellow-500 text-white hover:bg-yellow-600" title="HTML 파일에서 불러오기">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span class="hidden sm:inline">HTML 불러오기</span>
+                </button>
+                <input type="file" id="loadExcelInput" accept=".xlsx, .csv" style="display: none;">
+                <button id="loadExcelButtonTrigger" class="action-button bg-green-500 text-white hover:bg-green-600" title="엑셀 파일에서 불러오기">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    <span class="hidden sm:inline">엑셀 불러오기</span>
+                </button>
+                </div>
+        </div>
+    </header>
+
+    <main class="main-content max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div id="daysContainer" class="space-y-4">
+            <!-- Days will be rendered here by JavaScript -->
+        </div>
+
+        <div class="add-day-button-container mt-6 text-center">
+            <button id="addDayButton" class="action-button bg-indigo-500 text-white hover:bg-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                새 날짜 추가
+            </button>
+            <input type="file" id="loadDayAtIndexHtmlInput" accept=".html" style="display: none;">
+        </div>
+    </main>
+
+    <div id="activityModal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="text-xl font-bold mb-4">새 일정 추가</h2>
+            <form id="activityForm">
+                <input type="hidden" id="activityId">
+                <input type="hidden" id="dayIndex">
+                <div>
+                    <label for="activityTimeInput">시간 (HHMM 형식, 선택 사항):</label>
+                    <input type="text" id="activityTimeInput" placeholder="예: 1130 또는 0900" maxlength="4">
+                </div>
+                <div>
+                    <label for="activityIconSelect">아이콘 선택:</label>
+                    <select id="activityIconSelect"> <!-- Options will be populated by JavaScript --></select>
+                </div>
+                <div>
+                    <label for="activityTitle">활동/장소명:</label>
+                    <input type="text" id="activityTitle" required placeholder="예: 루브르 박물관 방문">
+                </div>
+                <div>
+                    <label for="activityDescription">간단 설명/메모:</label>
+                    <textarea id="activityDescription" rows="3" placeholder="예: 모나리자 및 주요 작품 관람"></textarea>
+                </div>
+                <div>
+                    <label for="activityLocation">주소/위치 링크:</label>
+                    <input type="url" id="activityLocation" placeholder="예: https://maps.google.com/... (선택 사항)">
+                </div>
+                <div>
+                    <label for="activityImageUrl">이미지 URL:</label>
+                    <input type="url" id="activityImageUrl" placeholder="예: https://example.com/image.jpg (선택 사항)">
+                </div>
+                <div>
+                    <label for="activityCost">비용:</label>
+                    <input type="text" id="activityCost" placeholder="예: €20 또는 ₩25,000 (선택 사항)">
+                </div>
+                <div>
+                    <label for="activityNotes">기타 필드 (예약번호 등):</label>
+                    <input type="text" id="activityNotes" placeholder="예: 예약번호: 12345 (선택 사항)">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" id="cancelActivityButton" class="action-button bg-gray-300 hover:bg-gray-400">취소</button>
+                    <button type="submit" id="saveActivityButton" class="action-button bg-green-500 text-white hover:bg-green-600">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirmDeleteDayModal" class="modal-backdrop hidden">
+        <div class="modal-content confirm-modal-content"> <h3 class="text-lg font-semibold mb-4">일정 삭제 확인</h3>
+            <p id="confirmDeleteDayMessage" class="mb-6">정말로 이 날짜의 모든 일정을 삭제하시겠습니까?</p>
+            <div class="modal-buttons">
+                <button id="cancelDeleteDayButton" class="action-button bg-gray-300 hover:bg-gray-400">아니오</button>
+                <button id="confirmDeleteDayActionButton" class="action-button bg-red-500 text-white hover:bg-red-600">예, 삭제합니다</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white py-2 px-4 rounded-md shadow-lg transition-opacity duration-300 opacity-0">
+        <!-- Toast message will be shown here by JavaScript -->
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
