@@ -1,0 +1,313 @@
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: #F8F9FA;
+}
+.header {
+    background-color: white;
+    border-bottom: 1px solid #E0E0E0;
+}
+.header-title-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* 8px */
+}
+.header-title-input {
+    font-size: 1.5rem; /* text-2xl */
+    font-weight: bold;
+    padding: 0.25rem 0.5rem; /* py-1 px-2 */
+    border: 1px solid #D1D5DB; /* gray-300 */
+    border-radius: 0.375rem; /* rounded-md */
+    flex-grow: 1;
+    min-width: 200px;
+}
+.action-button {
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.action-button:hover {
+    filter: brightness(0.95);
+}
+.day-section {
+    margin-bottom: 16px;
+    border: 1px solid transparent; /* For sortable ghost */
+    border-radius: 0.375rem; /* rounded-md */
+    background-color: #ffffff; /* Add background to day section for better visual grouping */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1); /* Tailwind shadow-md */
+}
+.day-section.sortable-ghost {
+    background-color: #e0e7ff; /* Light blue for ghost */
+    border: 1px dashed #6366f1; /* Indigo border for ghost */
+}
+ .day-section.sortable-chosen { /* Style for the item being dragged */
+    opacity: 0.7;
+}
+
+.day-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid #EEE;
+    /* margin-bottom: 16px; Removed margin as day-section now has bg */
+    background-color: #fdfdfd;
+    border-radius: 6px 6px 0 0;
+    cursor: grab; /* Indicate day section is draggable */
+}
+.day-header-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+}
+.day-header-title {
+    font-size: 18px;
+    font-weight: 600;
+    /* cursor: pointer; No longer needed for collapse, header container is clickable */
+}
+.date-edit-input-text { /* Changed from date-edit-input for type=text */
+    font-size: 16px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    max-width: 200px; /* Adjusted width for longer placeholder */
+}
+.day-header-controls {
+     display: flex;
+     align-items: center;
+     gap: 2px; /* Further reduced gap for more buttons */
+}
+.icon-button { /* General style for icon buttons */
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.icon-button:hover {
+    background-color: #e0e0e0;
+}
+.icon-button svg {
+    width: 20px;
+    height: 20px;
+    color: #555; /* Default icon color */
+}
+.icon-button.delete-day-button svg {
+    color: #ef4444;
+}
+.icon-button.delete-day-button:hover svg {
+    color: #dc2626;
+}
+.card-action-icon-button svg { /* Specific size for card action icons */
+    width: 18px;
+    height: 18px;
+}
+.card-action-icon-button.delete-activity-button svg {
+    color: #ef4444; /* Red for delete */
+}
+ .card-action-icon-button.delete-activity-button:hover svg {
+    color: #dc2626; /* Darker red on hover */
+}
+
+
+.day-toggle-button svg {
+    transition: transform 0.2s ease-in-out;
+}
+.day-content-wrapper {
+    padding: 0 8px 8px 8px; /* Adjust padding for content within day-section */
+}
+.activity-card {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #E0E0E0;
+    padding: 16px;
+    margin-top: 16px; /* Add margin-top instead of bottom for consistency */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+    cursor: grab;
+}
+.activities-list .activity-card:first-child {
+     margin-top: 0; /* Remove margin for the first card in the list if header has margin-bottom */
+}
+.readonly-activity-card {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #E0E0E0;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+}
+.activity-card:active {
+    cursor: grabbing;
+}
+.card-time-icon-area {
+    width: 100px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.card-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+.card-time {
+    font-size: 14px;
+    font-weight: bold;
+    min-height: 21px;
+}
+.card-details-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.card-title {
+    font-size: 16px;
+    font-weight: bold;
+}
+.card-description, .card-location, .card-cost, .card-notes {
+    font-size: 14px;
+}
+.card-image {
+    width: 250px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+.card-location a {
+    color: #007bff;
+    text-decoration: none;
+}
+.card-location a:hover {
+    text-decoration: underline;
+}
+.card-actions-direct {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    padding-left: 0.5rem;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: white;
+    padding: 24px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.confirm-modal-content {
+     max-width: 400px;
+}
+.modal-content label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.modal-content input, .modal-content textarea, .modal-content select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    background-color: white;
+    height: 40px;
+}
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* Print Styles & Read-only HTML View Styles */
+.readonly-view-header {
+    background-color: white;
+    border-bottom: 1px solid #E0E0E0;
+    padding: 1rem;
+    text-align: center;
+}
+.readonly-view-header h1 {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+.readonly-main-content {
+    max-width: 48rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 1rem;
+}
+.readonly-collapse-button {
+    font-size: 0.75rem; /* text-xs */
+    color: #4B5563; /* gray-600 */
+    padding: 0.25rem 0.5rem; /* py-1 px-2 */
+    border: 1px solid #D1D5DB; /* border-gray-300 */
+    border-radius: 0.375rem; /* rounded-md */
+    cursor: pointer;
+}
+.readonly-collapse-button:hover {
+    color: #1F2937; /* gray-800 */
+    background-color: #F3F4F6; /* gray-100 */
+}
+
+
+@media print, .saved-html-view {
+    .header, .add-day-button-container, .add-activity-button, #activityModal, #confirmDeleteDayModal, .day-toggle-button, .edit-date-button, .save-date-button, .cancel-date-edit-button, .delete-day-button, #saveHtmlButton, #loadHtmlButtonTrigger, .edit-trip-title-button, .save-trip-title-button, .cancel-trip-title-edit-button, .card-actions-direct, #loadDayHtmlButtonTrigger, .save-day-button, .load-day-at-index-button, #previewButton, #loadExcelButtonTrigger { display: none !important; }
+    .main-content, .readonly-main-content { padding: 0 !important; }
+    .day-section { margin-bottom: 15mm; page-break-inside: avoid; }
+    .day-header-container { padding: 0; margin-bottom: 5mm; border-bottom: 2px solid black; background-color: white !important; cursor: default !important; }
+    .day-header-title { font-size: 16pt; cursor: default !important; }
+    .date-edit-input-text { display: none !important; }
+    .day-content-wrapper { /* display: block !important; */ padding: 0 !important; }
+    .activity-card, .readonly-activity-card { border: 1px solid #ccc; box-shadow: none; padding: 4mm; margin-top: 4mm; margin-bottom: 0; page-break-inside: avoid; display: flex !important; cursor: default !important; }
+    .activities-list .activity-card:first-child, .activities-list .readonly-activity-card:first-child { margin-top: 0; }
+    .card-time-icon-area { width: 25mm; flex-direction: column; }
+    .card-icon { font-size: 14pt; margin-bottom: 1mm; }
+    .card-time { font-size: 10pt; font-weight: bold; min-height: 12pt; }
+    .card-details-area { flex-grow: 1; }
+    .card-title { font-size: 12pt; font-weight: bold; }
+    .card-description, .card-location, .card-cost, .card-notes { font-size: 10pt; }
+    .card-image {
+        display: block;
+        width: 80px !important;
+        height: 80px !important;
+        object-fit: cover !important;
+    }
+    .card-location a { text-decoration: none; color: black; }
+    .card-location a::after { content: " (" attr(href) ")"; font-size: 8pt; }
+    @page { size: A4 portrait; margin: 20mm; @top-left { content: attr(data-trip-title); font-size: 9pt; color: #555; } @top-right { content: "Page " counter(page) " / " counter(pages); font-size: 9pt; color: #555; } @bottom-left { content: "생성일: " attr(data-creation-date); font-size: 9pt; color: #555; } @bottom-right { content: "MyTravelPlanner"; font-size: 9pt; color: #555; } }
+    body::before { display: none; content: attr(data-trip-title) attr(data-creation-date); }
+}
+@media print {
+     .card-image { display: none; }
+     .readonly-collapse-button { display: none !important; }
+}
+
+.sortable-ghost { opacity: 0.4; background: #F0F8FF; }
+.sortable-drag { opacity: 0.9; }
