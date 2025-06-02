@@ -64,10 +64,10 @@ const confirmDeleteDayModal = document.getElementById('confirmDeleteDayModal');
 const confirmDeleteDayMessage = document.getElementById('confirmDeleteDayMessage');
 const cancelDeleteDayButton = document.getElementById('cancelDeleteDayButton');
 const confirmDeleteDayActionButton = document.getElementById('confirmDeleteDayActionButton');
-const loadTripModal = document.getElementById('loadTripModal'); // 불러오기 모달
-const tripListForLoadUl = document.getElementById('tripListForLoad'); // 모달 내 목록 UL
-const cancelLoadTripModalButton = document.getElementById('cancelLoadTripModalButton'); // 모달 닫기 버튼
-const loadingTripListMsg = document.getElementById('loadingTripListMsg'); // 모달 내 로딩 메시지
+const loadTripModal = document.getElementById('loadTripModal');
+const tripListForLoadUl = document.getElementById('tripListForLoad');
+const cancelLoadTripModalButton = document.getElementById('cancelLoadTripModalButton');
+const loadingTripListMsg = document.getElementById('loadingTripListMsg');
 
 let dayIndexToDelete = -1;
 let insertDayAtIndex = -1;
@@ -293,6 +293,35 @@ async function handleSaveTripAsNew() {
     await saveTripToFirestore(true);
 }
 
+async function deleteTripFromFirestore(tripIdToDelete, tripTitle) {
+    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
+    if (!tripIdToDelete) { showToastMessage("삭제할 일정 ID가 없습니다.", true); return; }
+
+    if (!confirm(`"${tripTitle}" 일정을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+        return;
+    }
+
+    try {
+        await db.collection("tripplan").doc(tripIdToDelete).delete();
+        showToastMessage(`"${tripTitle}" 일정이 Firestore에서 삭제되었습니다.`);
+
+        if (currentTripId === tripIdToDelete) {
+            currentTripId = null;
+            tripData = { title: "새 여행 일정표", editingTitle: false, days: [{ date: dateToYyyyMmDd(new Date()), activities: [], isCollapsed: false, editingDate: false }] };
+            renderTrip();
+        }
+        
+        // 모달이 열려있다면 목록 새로고침
+        if (loadTripModal && !loadTripModal.classList.contains('hidden')) {
+            loadTripListFromFirestore();
+        }
+
+    } catch (error) {
+        console.error("Error deleting trip from Firestore: ", error);
+        showToastMessage(`"${tripTitle}" 일정 삭제 중 오류가 발생했습니다.`, true);
+    }
+}
+
 async function loadTripFromFirestore(tripIdToLoad) {
     if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다. Firebase SDK를 확인해주세요.", true); return; }
     if (!tripIdToLoad) {
@@ -335,11 +364,11 @@ async function loadTripListFromFirestore() {
 
     loadingTripListMsg.textContent = "목록을 불러오는 중...";
     loadingTripListMsg.style.display = 'block';
-    tripListForLoadUl.innerHTML = ''; 
+    tripListForLoadUl.innerHTML = '';
     loadTripModal.classList.remove('hidden');
 
     try {
-        const querySnapshot = await db.collection("tripplan").get();
+        const querySnapshot = await db.collection("tripplan").orderBy("title").get(); // 제목순 정렬 (선택사항)
         const trips = [];
         querySnapshot.forEach((doc) => {
             trips.push({ id: doc.id, title: doc.data().title || "제목 없음" });
@@ -350,14 +379,35 @@ async function loadTripListFromFirestore() {
         if (trips.length > 0) {
             trips.forEach(trip => {
                 const listItem = document.createElement('li');
-                listItem.textContent = trip.title;
-                listItem.dataset.tripId = trip.id;
-                listItem.className = 'p-2 hover:bg-gray-100 rounded cursor-pointer text-sm'; // 스타일 추가
+                listItem.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded group';
                 
-                listItem.addEventListener('click', () => {
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = trip.title;
+                titleSpan.dataset.tripId = trip.id;
+                titleSpan.className = 'cursor-pointer flex-grow hover:text-blue-600 mr-2 text-sm';
+                titleSpan.title = `"${trip.title}" 일정 불러오기`;
+
+                titleSpan.addEventListener('click', () => {
                     loadTripFromFirestore(trip.id);
-                    loadTripModal.classList.add('hidden');
+                    if (loadTripModal) loadTripModal.classList.add('hidden');
                 });
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = `<svg class="w-4 h-4 text-gray-400 group-hover:text-red-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`;
+                deleteButton.className = 'action-button text-xs px-2 py-1 opacity-50 group-hover:opacity-100 hover:bg-red-100 rounded';
+                deleteButton.dataset.tripId = trip.id;
+                deleteButton.dataset.tripTitle = trip.title;
+                deleteButton.title = `"${trip.title}" 일정 삭제`;
+
+                deleteButton.addEventListener('click', (event) => {
+                    event.stopPropagation(); 
+                    const tripIdToDelete = event.currentTarget.dataset.tripId;
+                    const tripTitleToDelete = event.currentTarget.dataset.tripTitle;
+                    deleteTripFromFirestore(tripIdToDelete, tripTitleToDelete);
+                });
+
+                listItem.appendChild(titleSpan);
+                listItem.appendChild(deleteButton);
                 tripListForLoadUl.appendChild(listItem);
             });
         } else {
@@ -463,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadFromFirebaseButton.onclick = loadTripListFromFirestore;
     }
 
-    if (cancelLoadTripModalButton && loadTripModal) { // 불러오기 모달 취소 버튼
+    if (cancelLoadTripModalButton && loadTripModal) {
         cancelLoadTripModalButton.addEventListener('click', () => {
             loadTripModal.classList.add('hidden');
         });
@@ -527,6 +577,44 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadExcelButtonTrigger) console.error("#loadExcelButtonTrigger 요소를 찾을 수 없습니다. (DOMContentLoaded)");
         if (!loadExcelInput) console.error("#loadExcelInput 요소를 찾을 수 없습니다. (DOMContentLoaded)");
     }
+    
+    // 단축키 이벤트 리스너 추가
+    document.addEventListener('keydown', function(event) {
+        // F2 감지: DB에 저장 (기존 Ctrl+S 대체)
+        if (event.key === 'F2') {
+            event.preventDefault(); // F2 키의 브라우저 기본 동작이 있다면 방지 (예: 일부 브라우저의 이름 바꾸기 등)
+            console.log("F2 감지: DB에 저장 실행");
+            
+            if (typeof saveTripToFirestore === 'function' && db) {
+                saveTripToFirestore(false); // 일반 저장 (isSaveAsNew = false)
+            } else {
+                console.error("saveTripToFirestore 함수를 호출할 수 없거나 DB가 초기화되지 않았습니다.");
+                showToastMessage("DB 저장 기능을 실행할 수 없습니다. 콘솔을 확인해주세요.", true);
+            }
+        }
 
+        if (event.key === 'F12') {
+            event.preventDefault(); 
+            console.log("F12 감지: DB 다른 이름으로 저장 실행");
+            if (typeof handleSaveTripAsNew === 'function' && db) {
+                handleSaveTripAsNew(); 
+            } else {
+                console.error("handleSaveTripAsNew 함수를 호출할 수 없거나 DB가 초기화되지 않았습니다.");
+                showToastMessage("DB 다른 이름으로 저장 기능을 실행할 수 없습니다. 콘솔을 확인해주세요.", true);
+            }
+        }
+
+        // 기존 Ctrl + S 로직은 제거하거나 주석 처리합니다.
+        // if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        //     event.preventDefault(); 
+        //     console.log("Ctrl+S 감지: DB에 저장 실행");
+        //     if (typeof saveTripToFirestore === 'function' && db) {
+        //         saveTripToFirestore(false); 
+        //     } else {
+        //         console.error("saveTripToFirestore 함수를 호출할 수 없거나 DB가 초기화되지 않았습니다.");
+        //         showToastMessage("DB 저장 기능을 실행할 수 없습니다. 콘솔을 확인해주세요.", true);
+        //     }
+        // }
+    });
     renderTrip();
 });
