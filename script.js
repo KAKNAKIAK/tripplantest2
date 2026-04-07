@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Firestore 저장/불러오기 버튼 설정
     if (saveHtmlButton) {
         const saveToFirebaseButton = saveHtmlButton;
-        let buttonTextContent = 'DB에 저장';
+        let buttonTextContent = '일정 저장';
         let spanElement = saveToFirebaseButton.querySelector('span.hidden.sm\\:inline');
         if (spanElement) { spanElement.textContent = buttonTextContent; } else {
             let textNodeFoundAndReplaced = false;
@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (saveToFirebaseButton.textContent.includes('HTML 저장')){ saveToFirebaseButton.innerHTML = saveToFirebaseButton.innerHTML.replace(/HTML 저장/g, buttonTextContent);}
             }
         }
-        saveToFirebaseButton.title = '현재 일정을 Firestore에 저장/업데이트';
+        saveToFirebaseButton.title = '일정 저장';
         saveToFirebaseButton.onclick = () => saveTripToFirestore(false);
     }
 
@@ -522,22 +522,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (loadHtmlButtonTrigger) {
         const loadFromFirebaseButton = loadHtmlButtonTrigger;
-        let buttonTextContent = 'DB에서 불러오기';
+        let buttonTextContent = '일정 불러오기';
         let spanElement = loadFromFirebaseButton.querySelector('span.hidden.sm\\:inline');
         if (spanElement) { spanElement.textContent = buttonTextContent; } else { 
             let textNodeFoundAndReplaced = false;
             loadFromFirebaseButton.childNodes.forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().includes('HTML 불러오기') && !textNodeFoundAndReplaced) {
-                    node.textContent = node.textContent.replace('HTML 불러오기', buttonTextContent); textNodeFoundAndReplaced = true;
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().includes('일정 불러오기') && !textNodeFoundAndReplaced) {
+                    node.textContent = node.textContent.replace('일정 불러오기', buttonTextContent); textNodeFoundAndReplaced = true;
                 }
             });
              if (!textNodeFoundAndReplaced) {
                 const innerSpan = loadFromFirebaseButton.querySelector('span');
-                if (innerSpan && innerSpan.textContent.trim().includes('HTML 불러오기')) { innerSpan.textContent = buttonTextContent;
-                } else if (loadFromFirebaseButton.textContent.includes('HTML 불러오기')) { loadFromFirebaseButton.innerHTML = loadFromFirebaseButton.innerHTML.replace(/HTML 불러오기/g, buttonTextContent); }
+                if (innerSpan && innerSpan.textContent.trim().includes('일정 불러오기')) { innerSpan.textContent = buttonTextContent;
+                } else if (loadFromFirebaseButton.textContent.includes('일정 불러오기')) { loadFromFirebaseButton.innerHTML = loadFromFirebaseButton.innerHTML.replace(/일정 불러오기/g, buttonTextContent); }
             }
         }
-        loadFromFirebaseButton.title = 'Firestore에서 일정 목록 불러오기';
+        loadFromFirebaseButton.title = '일정 불러오기';
         if (loadHtmlInput) loadHtmlInput.style.display = 'none';
         loadFromFirebaseButton.onclick = loadTripListFromFirestore;
     }
