@@ -71,7 +71,15 @@ const cancelLoadTripModalButton = document.getElementById('cancelLoadTripModalBu
 const loadingTripListMsg = document.getElementById('loadingTripListMsg');
 const tripSearchInput = document.getElementById('tripSearchInput'); // 검색 입력 필드
 
-
+// --- Attraction DB DOM ---
+const loadAttractionButton = document.getElementById('loadAttractionButton');
+const saveToAttractionDbButton = document.getElementById('saveToAttractionDbButton');
+const loadAttractionModal = document.getElementById('loadAttractionModal');
+const attractionSearchInput = document.getElementById('attractionSearchInput');
+const attractionListForLoad = document.getElementById('attractionListForLoad');
+const cancelLoadAttractionModalButton = document.getElementById('cancelLoadAttractionModalButton');
+const loadingAttractionListMsg = document.getElementById('loadingAttractionListMsg');
+let allFetchedAttractions = [];
 let dayIndexToDelete = -1;
 // --- Utility Functions ---
 function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
@@ -593,5 +601,174 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    if (loadAttractionButton) {
+        loadAttractionButton.addEventListener('click', loadAttractionListFromFirestore);
+    }
+    if (saveToAttractionDbButton) {
+        saveToAttractionDbButton.addEventListener('click', saveAttractionToFirestore);
+    }
+    if (cancelLoadAttractionModalButton) {
+        cancelLoadAttractionModalButton.addEventListener('click', () => {
+            if(loadAttractionModal) loadAttractionModal.classList.add('hidden');
+        });
+    }
+    if (attractionSearchInput) {
+        attractionSearchInput.addEventListener('input', renderFilteredAttractionList);
+    }
+
     renderTrip();
 });
+
+// --- Attraction DB Logic ---
+async function saveAttractionToFirestore() {
+    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
+    
+    // Get values from the form
+    const title = activityTitle.value.trim();
+    if (!title) { showToastMessage("활동/장소명을 먼저 입력해주세요.", true); return; }
+    
+    // Change save button state
+    const originalText = saveToAttractionDbButton.textContent;
+    saveToAttractionDbButton.textContent = "저장중...";
+    saveToAttractionDbButton.disabled = true;
+
+    const icon = activityIconSelect ? activityIconSelect.value : '';
+    const description = activityDescription ? activityDescription.value.trim() : '';
+    const locationLink = activityLocation ? activityLocation.value.trim() : '';
+    const imageUrl = activityImageUrl ? activityImageUrl.value.trim() : '';
+    const cost = activityCost ? activityCost.value.trim() : '';
+    const notes = activityNotes ? activityNotes.value.trim() : '';
+
+    const attractionData = {
+        title,
+        icon,
+        description,
+        locationLink,
+        imageUrl,
+        cost,
+        notes,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        const querySnapshot = await db.collection("attractions").where("title", "==", title).get();
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            await db.collection("attractions").doc(docId).set(attractionData, { merge: true });
+            showToastMessage(`관광지 "${title}" 정보가 성공적으로 갱신되었습니다.`);
+        } else {
+            await db.collection("attractions").add(attractionData);
+            showToastMessage(`관광지 "${title}" 정보가 새롭게 등록되었습니다.`);
+        }
+    } catch (e) {
+        console.error("Error saving attraction to Firestore: ", e);
+        showToastMessage("관광지 DB 저장 중 오류가 발생했습니다.", true);
+    } finally {
+        saveToAttractionDbButton.textContent = originalText;
+        saveToAttractionDbButton.disabled = false;
+    }
+}
+
+async function loadAttractionListFromFirestore() {
+    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
+    if (!loadAttractionModal || !attractionListForLoad || !cancelLoadAttractionModalButton || !loadingAttractionListMsg || !attractionSearchInput) {
+        showToastMessage("관광지 불러오기 UI 요소가 준비되지 않았습니다.", true); return;
+    }
+
+    loadingAttractionListMsg.style.display = 'block';
+    attractionListForLoad.innerHTML = '';
+    attractionSearchInput.value = '';
+    
+    loadAttractionModal.classList.remove('hidden');
+    allFetchedAttractions = [];
+
+    try {
+        const querySnapshot = await db.collection("attractions").orderBy("title").get();
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            allFetchedAttractions.push({ id: doc.id, ...data });
+        });
+
+        loadingAttractionListMsg.style.display = 'none';
+        renderFilteredAttractionList();
+    } catch (error) {
+        console.error("Error loading attraction list from Firestore: ", error);
+        showToastMessage("관광지 불러오기 중 오류가 발생했습니다.", true);
+        loadingAttractionListMsg.style.display = 'none';
+        renderFilteredAttractionList();
+    }
+}
+
+function renderFilteredAttractionList() {
+    if (!attractionListForLoad) return;
+    attractionListForLoad.innerHTML = '';
+    const searchTerm = attractionSearchInput.value.trim().toLowerCase();
+
+    const filteredAttractions = allFetchedAttractions.filter(attr => attr.title && attr.title.toLowerCase().includes(searchTerm));
+
+    if (filteredAttractions.length > 0) {
+        filteredAttractions.forEach(attr => {
+            const listItem = document.createElement('li');
+            listItem.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded group cursor-pointer border-b border-gray-100';
+            
+            const contentSpan = document.createElement('div');
+            contentSpan.className = 'flex-grow flex items-center gap-2 font-medium';
+            contentSpan.innerHTML = `<span>${attr.icon || ''}</span> <span>${attr.title}</span>`;
+            
+            contentSpan.addEventListener('click', () => {
+                populateActivityModalWithAttraction(attr);
+                loadAttractionModal.classList.add('hidden');
+            });
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.innerHTML = `<svg class="w-4 h-4 text-gray-400 group-hover:text-red-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`;
+            deleteButton.className = 'action-button text-xs px-2 py-1 opacity-50 group-hover:opacity-100 hover:bg-red-100 rounded';
+            deleteButton.title = `"${attr.title}" 관광지 삭제`;
+
+            deleteButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                deleteAttractionFromFirestore(attr.id, attr.title);
+            });
+
+            listItem.appendChild(contentSpan);
+            listItem.appendChild(deleteButton);
+            attractionListForLoad.appendChild(listItem);
+        });
+    } else {
+        const isLoading = loadingAttractionListMsg && loadingAttractionListMsg.style.display !== 'none';
+        if (!isLoading) {
+            if (searchTerm && allFetchedAttractions.length > 0) {
+                attractionListForLoad.innerHTML = `<li class="p-2 text-gray-500">"${searchTerm}" 검색 결과가 없습니다.</li>`;
+            } else if (allFetchedAttractions.length === 0) {
+                 attractionListForLoad.innerHTML = '<li class="p-2 text-gray-500">저장된 관광지가 없습니다.</li>';
+            }
+        }
+    }
+}
+
+async function deleteAttractionFromFirestore(id, title) {
+    if (!db) return;
+    if (confirm(`관광지 "${title}" 정보를 영구적으로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+        try {
+            await db.collection("attractions").doc(id).delete();
+            showToastMessage(`관광지 "${title}"가 삭제되었습니다.`);
+            allFetchedAttractions = allFetchedAttractions.filter(attr => attr.id !== id);
+            renderFilteredAttractionList();
+        } catch (error) {
+            console.error("Error removing attraction: ", error);
+            showToastMessage("관광지 삭제 중 오류가 발생했습니다.", true);
+        }
+    }
+}
+
+function populateActivityModalWithAttraction(attr) {
+    if(activityTitle) activityTitle.value = attr.title || '';
+    if(activityIconSelect) activityIconSelect.value = attr.icon || (travelEmojis[0] ? travelEmojis[0].value : '');
+    if(activityDescription) activityDescription.value = attr.description || '';
+    if(activityLocation) activityLocation.value = attr.locationLink || '';
+    if(activityImageUrl) activityImageUrl.value = attr.imageUrl || '';
+    if(activityCost) activityCost.value = attr.cost || '';
+    if(activityNotes) activityNotes.value = attr.notes || '';
+    showToastMessage(`"${attr.title}" 데이터를 양식에 가져왔습니다.`);
+}
