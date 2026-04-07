@@ -58,8 +58,7 @@ const copyInlineHtmlButton = document.getElementById('copyInlineHtmlButton');
 const inlinePreviewButton = document.getElementById('inlinePreviewButton');
 const loadHtmlInput = document.getElementById('loadHtmlInput');
 const loadHtmlButtonTrigger = document.getElementById('loadHtmlButtonTrigger');
-const loadExcelInput = document.getElementById('loadExcelInput');
-const loadExcelButtonTrigger = document.getElementById('loadExcelButtonTrigger');
+
 const loadDayAtIndexHtmlInput = document.getElementById('loadDayAtIndexHtmlInput');
 const toast = document.getElementById('toast');
 const confirmDeleteDayModal = document.getElementById('confirmDeleteDayModal');
@@ -459,9 +458,7 @@ function handleSaveDayAsHtml(dayIndex) { if (dayIndex < 0 || !tripData.days || d
 if (loadDayAtIndexHtmlInput) loadDayAtIndexHtmlInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (file && insertDayAtIndex !== -1 && insertDayAtIndex < tripData.days.length) { const reader = new FileReader(); reader.onload = (e) => { try { const htmlString = e.target.result; const parser = new DOMParser(); const doc = parser.parseFromString(htmlString, "text/html"); const embeddedDataElement = doc.getElementById('embeddedTripDayData'); if (embeddedDataElement && embeddedDataElement.textContent) { const loadedDayData = JSON.parse(embeddedDataElement.textContent); if (loadedDayData && loadedDayData.date && isValidDateString(loadedDayData.date) && Array.isArray(loadedDayData.activities)) { tripData.days[insertDayAtIndex].date = loadedDayData.date; tripData.days[insertDayAtIndex].activities = loadedDayData.activities.map(act => ({ ...act, id: act.id || generateId() })); tripData.days[insertDayAtIndex].isCollapsed = false; tripData.days[insertDayAtIndex].editingDate = false; recalculateAllDates(); renderTrip(); showToastMessage(`DAY ${insertDayAtIndex + 1} 일정을 불러온 내용으로 덮어썼습니다.`); } else { throw new Error('유효하지 않은 날짜 데이터 형식입니다.'); } } else { throw new Error('HTML 파일에서 날짜 데이터를 찾을 수 없습니다.'); } } catch (err) { console.error("날짜 HTML 덮어쓰기 오류:", err); showToastMessage(`오류: ${err.message}`, true); } finally { if(loadDayAtIndexHtmlInput) loadDayAtIndexHtmlInput.value = null; insertDayAtIndex = -1; } }; reader.onerror = () => { showToastMessage('파일을 읽는 중 오류가 발생했습니다.', true); if(loadDayAtIndexHtmlInput) loadDayAtIndexHtmlInput.value = null; insertDayAtIndex = -1; }; reader.readAsText(file); } else { if(insertDayAtIndex === -1 || insertDayAtIndex >= tripData.days.length) { showToastMessage('날짜를 불러올 유효한 위치가 선택되지 않았습니다.', true); } if(loadDayAtIndexHtmlInput) loadDayAtIndexHtmlInput.value = null; insertDayAtIndex = -1; } });
 if (loadHtmlInput) loadHtmlInput.addEventListener('change', (event) => { /* Firestore 사용으로 이 로직은 현재 사용되지 않음 */});
 
-// --- 엑셀 불러오기 로직 ---
-console.log("스크립트 최상단: loadExcelButtonTrigger:", loadExcelButtonTrigger);
-console.log("스크립트 최상단: loadExcelInput:", loadExcelInput);
+
 
 // --- 인라인 스타일 HTML 생성 및 표시 ---
 function handleInlinePreview() { const inlineHtml = generateInlineStyledHTML(tripData, { includeStyles: true, makePageTitleEmptyForCopy: false }); const previewWindow = window.open('', '_blank'); if (previewWindow) { previewWindow.document.write(inlineHtml); previewWindow.document.close(); } else { showToastMessage("팝업이 차단되었을 수 있습니다.", true); }}
@@ -558,64 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("#tripSearchInput 요소를 찾을 수 없습니다. (DOMContentLoaded)");
     }
     
-    // 엑셀 불러오기 버튼 설정
-    console.log("DOMContentLoaded: loadExcelButtonTrigger:", loadExcelButtonTrigger);
-    console.log("DOMContentLoaded: loadExcelInput:", loadExcelInput);
 
-    if (loadExcelButtonTrigger && loadExcelInput) {
-        loadExcelButtonTrigger.addEventListener('click', () => {
-            console.log("엑셀 불러오기 버튼(loadExcelButtonTrigger) 클릭됨 - DOMContentLoaded");
-            loadExcelInput.click();
-        });
-
-        loadExcelInput.addEventListener('change', (event) => {
-            console.log("엑셀 파일 선택 완료 (change 이벤트 발생) - DOMContentLoaded");
-            const file = event.target.files[0];
-            if (file) {
-                console.log("선택된 파일:", file.name);
-                if (typeof XLSX === 'undefined') { showToastMessage('Excel 처리 라이브러리(XLSX)가 로드되지 않았습니다.', true); console.error('XLSX is not defined.'); if(loadExcelInput) loadExcelInput.value = null; return; }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    console.log("FileReader onload 이벤트 발생 - DOMContentLoaded");
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
-                        console.log("엑셀 워크북 로드 완료:", workbook);
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
-                        console.log("첫 번째 시트 선택:", firstSheetName);
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: ["date", "time", "title", "description", "icon", "locationLink", "imageUrl", "cost", "notes"], range: 1, raw: false, defval: "" });
-                        console.log("JSON으로 변환된 데이터:", JSON.stringify(jsonData, null, 2));
-                        if (jsonData.length === 0) { showToastMessage("엑셀 파일에 처리할 데이터가 없습니다 (헤더 제외).", true); console.warn("jsonData 배열이 비어있습니다."); if(loadExcelInput) loadExcelInput.value = null; return; }
-                        const newDaysData = []; let errors = [];
-                        jsonData.forEach((row, index) => {
-                            const excelRowNumber = index + 2; console.log(`행 ${excelRowNumber} 처리 시작:`, row);
-                            let rawDate = row.date; const title = String(row.title || "").trim();
-                            if (!rawDate) { errors.push(`${excelRowNumber}행: 날짜(A열)가 비어있습니다. 이 행을 건너뜁니다.`); console.warn(`${excelRowNumber}행: 날짜 없음`); return; }
-                            if (!title) { errors.push(`${excelRowNumber}행: 활동/장소명(C열)이 비어있습니다. 이 행을 건너뜁니다.`); console.warn(`${excelRowNumber}행: 제목 없음`); return; }
-                            let formattedDate = "";
-                            if (rawDate instanceof Date) { if (!isNaN(rawDate.getTime())) { formattedDate = dateToYyyyMmDd(rawDate); } } else if (typeof rawDate === 'string') { const parsedAttempt = parseAndValidateDateInput(rawDate.trim()); if (parsedAttempt) { formattedDate = parsedAttempt; } } else if (typeof rawDate === 'number') { const excelDate = XLSX.SSF.parse_date_code(rawDate); if (excelDate) { formattedDate = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`; if (!isValidDateString(formattedDate)) formattedDate = ""; } }
-                            console.log(`${excelRowNumber}행 날짜 파싱 결과: raw='${rawDate}', formatted='${formattedDate}'`);
-                            if (!formattedDate) { errors.push(`${excelRowNumber}행: 날짜(A열) 형식이 올바르지 않거나 유효하지 않습니다. 값: "${row.date}". 이 행을 건너뜁니다.`); console.warn(`${excelRowNumber}행: 유효하지 않은 날짜 형식`); return; }
-                            let time = String(row.time || "").trim(); if (time) { if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) { const parts = time.split(':'); time = parts[0].padStart(2,'0') + parts[1].padStart(2,'0'); } else if (/^0\.\d+$/.test(time)) { const excelTime = parseFloat(time); const totalMinutes = Math.round(excelTime * 24 * 60); const hours = Math.floor(totalMinutes / 60); const minutes = totalMinutes % 60; time = String(hours).padStart(2, '0') + String(minutes).padStart(2, '0'); } else if (/^\d{1,4}$/.test(time)) { time = time.padStart(4, '0'); } else { errors.push(`${excelRowNumber}행: 시간(B열) 형식이 HHMM 또는 HH:MM이 아닙니다. 값: "${row.time}". 시간 정보 없이 진행합니다.`); time = ""; } if (time) { const hours = parseInt(time.substring(0, 2), 10); const minutes = parseInt(time.substring(2, 4), 10); if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) { errors.push(`${excelRowNumber}행: 시간(B열) 값이 유효한 범위를 벗어났습니다. 값: "${row.time}". 시간 정보 없이 진행합니다.`); time = ""; } } }
-                            let dayForActivity = newDaysData.find(d => d.date === formattedDate);
-                            if (!dayForActivity) { dayForActivity = { date: formattedDate, activities: [], isCollapsed: (newDaysData.length !== 0), editingDate: false }; newDaysData.push(dayForActivity); console.log("새로운 날짜 그룹 생성:", formattedDate); }
-                            dayForActivity.activities.push({ id: generateId(), time: time, icon: String(row.icon || "").trim(), title: title, description: String(row.description || "").trim(), locationLink: String(row.locationLink || "").trim(), imageUrl: String(row.imageUrl || "").trim(), cost: String(row.cost || "").trim(), notes: String(row.notes || "").trim() });
-                            console.log(`${excelRowNumber}행 활동 추가 완료:`, dayForActivity.activities[dayForActivity.activities.length -1]);
-                        });
-                        console.log("오류/경고 목록:", errors); if (errors.length > 0) { showToastMessage("엑셀 데이터 불러오기 중 일부 문제 발생. 콘솔 확인.", true); console.warn("엑셀 불러오기 처리 중 발생한 문제점:\n" + errors.join("\n")); }
-                        console.log("최종 newDaysData:", JSON.stringify(newDaysData, null, 2));
-                        if (newDaysData.length > 0) { tripData.days = newDaysData; recalculateAllDates(); console.log("renderTrip() 호출 직전 tripData:", JSON.stringify(tripData, null, 2)); renderTrip(); showToastMessage('엑셀에서 일정을 성공적으로 불러왔습니다.'); } else if (errors.length > 0 && newDaysData.length === 0) { showToastMessage('엑셀에서 유효한 데이터를 불러오지 못했습니다.', true); } else if (newDaysData.length === 0 && errors.length === 0 ) { showToastMessage('엑셀 파일에서 처리할 유효한 데이터 행을 찾지 못했습니다.', true); }
-                    } catch (err) { console.error("엑셀 불러오기 중 FileReader onload 내부 오류:", err); showToastMessage(`엑셀 파일 처리 중 오류: ${err.message}`, true); } finally { if(loadExcelInput) loadExcelInput.value = null; }
-                };
-                reader.onerror = () => { console.error("FileReader onerror 이벤트 발생"); showToastMessage('파일을 읽는 중 오류가 발생했습니다.', true); if(loadExcelInput) loadExcelInput.value = null; };
-                reader.readAsArrayBuffer(file);
-            }
-        });
-    } else {
-        if (!loadExcelButtonTrigger) console.error("#loadExcelButtonTrigger 요소를 찾을 수 없습니다. (DOMContentLoaded)");
-        if (!loadExcelInput) console.error("#loadExcelInput 요소를 찾을 수 없습니다. (DOMContentLoaded)");
-    }
     
     // 단축키 이벤트 리스너 추가
     document.addEventListener('keydown', function(event) {
