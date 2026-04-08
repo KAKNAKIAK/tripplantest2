@@ -21,10 +21,10 @@ if (typeof firebase !== 'undefined') {
 }
 const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
 
-// --- State ---
 let allAttractions = [];
 let deleteTargetId = null;
 let deleteTargetTitle = '';
+let viewMode = localStorage.getItem('attractionViewMode') || 'card'; // 'card' or 'list'
 
 // --- DOM ---
 const searchInput = document.getElementById('searchInput');
@@ -126,54 +126,94 @@ function renderAttractions() {
     attractionGrid.classList.remove('hidden');
     attractionGrid.innerHTML = '';
 
+    // Apply layout class based on viewMode
+    if (viewMode === 'list') {
+        attractionGrid.className = 'list-view-container';
+    } else {
+        attractionGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4';
+    }
+
     filtered.forEach((attr, index) => {
-        const card = document.createElement('div');
-        card.className = 'attraction-card p-4 animate-in';
-        card.style.animationDelay = `${index * 0.04}s`;
-
-        let imageHTML = '';
-        if (attr.imageUrl) {
-            imageHTML = `<img src="${attr.imageUrl}" alt="${attr.title}" class="card-image" onerror="this.style.display='none'">`;
+        if (viewMode === 'list') {
+            renderListItem(attr, index);
+        } else {
+            renderCardItem(attr, index);
         }
-
-        let locationHTML = '';
-        if (attr.locationLink) {
-            locationHTML = `<a href="${attr.locationLink}" target="_blank" rel="noopener" class="text-xs text-blue-500 hover:underline inline-flex items-center gap-1 mt-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                위치 보기
-            </a>`;
-        }
-
-        let costHTML = '';
-        if (attr.cost) {
-            costHTML = `<div class="tag mt-2">💰 ${attr.cost}</div>`;
-        }
-
-        let notesHTML = '';
-        if (attr.notes) {
-            notesHTML = `<p class="text-xs text-gray-400 mt-1">📝 ${attr.notes}</p>`;
-        }
-
-        card.innerHTML = `
-            <div class="flex items-start justify-between mb-2">
-                <div class="flex items-center gap-2 min-w-0 flex-grow">
-                    <span class="text-2xl flex-shrink-0">${attr.icon || '📍'}</span>
-                    <h3 class="font-semibold text-sm truncate">${attr.title}</h3>
-                </div>
-                <div class="flex gap-1 flex-shrink-0 ml-2">
-                    <button class="btn-edit" onclick="openEditModal('${attr.id}')" title="수정">✏️</button>
-                    <button class="btn-danger" onclick="openDeleteModal('${attr.id}', '${attr.title.replace(/'/g, "\\'")}')" title="삭제">🗑️</button>
-                </div>
-            </div>
-            ${attr.description ? `<p class="text-xs text-gray-500 leading-relaxed">${attr.description}</p>` : ''}
-            ${imageHTML}
-            ${locationHTML}
-            ${costHTML}
-            ${notesHTML}
-        `;
-
-        attractionGrid.appendChild(card);
     });
+}
+
+function renderCardItem(attr, index) {
+    const card = document.createElement('div');
+    card.className = 'attraction-card p-4 animate-in';
+    card.style.animationDelay = `${index * 0.04}s`;
+
+    let imageHTML = '';
+    if (attr.imageUrl) {
+        imageHTML = `<img src="${attr.imageUrl}" alt="${attr.title}" class="card-image" onerror="this.style.display='none'">`;
+    }
+
+    let locationHTML = '';
+    if (attr.locationLink) {
+        locationHTML = `<a href="${attr.locationLink}" target="_blank" rel="noopener" class="text-xs text-blue-500 hover:underline inline-flex items-center gap-1 mt-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            위치 보기
+        </a>`;
+    }
+
+    let costHTML = '';
+    if (attr.cost) {
+        costHTML = `<div class="tag mt-2">💰 ${attr.cost}</div>`;
+    }
+
+    let notesHTML = '';
+    if (attr.notes) {
+        notesHTML = `<p class="text-xs text-gray-400 mt-1">📝 ${attr.notes}</p>`;
+    }
+
+    card.innerHTML = `
+        <div class="flex items-start justify-between mb-2">
+            <div class="flex items-center gap-2 min-w-0 flex-grow">
+                <span class="text-2xl flex-shrink-0">${attr.icon || '📍'}</span>
+                <h3 class="font-semibold text-sm truncate">${attr.title}</h3>
+            </div>
+            <div class="flex gap-1 flex-shrink-0 ml-2">
+                <button class="btn-edit" onclick="openEditModal('${attr.id}')" title="수정">✏️</button>
+                <button class="btn-danger" onclick="openDeleteModal('${attr.id}', '${attr.title.replace(/'/g, "\\'")}')" title="삭제">🗑️</button>
+            </div>
+        </div>
+        ${attr.description ? `<p class="text-xs text-gray-500 leading-relaxed">${attr.description}</p>` : ''}
+        ${imageHTML}
+        ${locationHTML}
+        ${costHTML}
+        ${notesHTML}
+    `;
+    attractionGrid.appendChild(card);
+}
+
+function renderListItem(attr, index) {
+    const item = document.createElement('div');
+    item.className = 'attraction-list-item animate-in';
+    item.style.animationDelay = `${index * 0.03}s`;
+
+    const escapedTitle = attr.title.replace(/'/g, "\\'");
+
+    let metaChips = '';
+    if (attr.cost) metaChips += `<span class="tag">💰 ${attr.cost}</span>`;
+    if (attr.locationLink) metaChips += `<a href="${attr.locationLink}" target="_blank" rel="noopener" class="tag" style="background:#eff6ff;color:#2563eb;text-decoration:none;">📍 위치</a>`;
+
+    item.innerHTML = `
+        <span class="text-2xl flex-shrink-0">${attr.icon || '📍'}</span>
+        <div class="flex-grow min-w-0">
+            <div class="font-semibold text-sm">${attr.title}</div>
+            ${attr.description ? `<p class="text-xs text-gray-500 truncate mt-0.5">${attr.description}</p>` : ''}
+            ${metaChips ? `<div class="flex gap-1.5 mt-1 flex-wrap">${metaChips}</div>` : ''}
+        </div>
+        <div class="flex gap-1 flex-shrink-0">
+            <button class="btn-edit" onclick="openEditModal('${attr.id}')" title="수정">✏️</button>
+            <button class="btn-danger" onclick="openDeleteModal('${attr.id}', '${escapedTitle}')" title="삭제">🗑️</button>
+        </div>
+    `;
+    attractionGrid.appendChild(item);
 }
 
 // --- Modal: Edit/Add ---
@@ -294,8 +334,33 @@ function handleImageUrlChange() {
 
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Set initial toggle button state
+    updateViewToggleButtons();
     loadAttractions();
 });
+
+const viewCardBtn = document.getElementById('viewCardBtn');
+const viewListBtn = document.getElementById('viewListBtn');
+
+function updateViewToggleButtons() {
+    if (viewMode === 'card') {
+        viewCardBtn.classList.add('active');
+        viewListBtn.classList.remove('active');
+    } else {
+        viewListBtn.classList.add('active');
+        viewCardBtn.classList.remove('active');
+    }
+}
+
+function setViewMode(mode) {
+    viewMode = mode;
+    localStorage.setItem('attractionViewMode', mode);
+    updateViewToggleButtons();
+    renderAttractions();
+}
+
+viewCardBtn.addEventListener('click', () => setViewMode('card'));
+viewListBtn.addEventListener('click', () => setViewMode('list'));
 
 searchInput.addEventListener('input', renderAttractions);
 addNewBtn.addEventListener('click', () => openEditModal(null));
@@ -317,3 +382,4 @@ document.addEventListener('keydown', (e) => {
         else if (editModal.classList.contains('active')) closeEditModal();
     }
 });
+
