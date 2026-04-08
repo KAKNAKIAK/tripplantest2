@@ -212,6 +212,7 @@ function handleToggleDayCollapse(event) { const dayHeaderContainer = event.targe
 
 // --- Activity Modal Logic ---
 let pendingNewActivityDayIndex = null; // 선택 모달에서 사용할 dayIndex 보관
+let pendingSyncActivityId = null; // 카드 덮어쓰기 모드에서 사용하는 activity id 보관
 
 function handleOpenActivityModalForNew(event) {
     const dayIdx = event.currentTarget.dataset.dayIndex;
@@ -272,48 +273,13 @@ function handleDuplicateActivity(event) { const button = event.currentTarget; co
 
 async function handleSyncActivityFromAttractionDb(event) {
     const button = event.currentTarget;
-    const dayIdx = parseInt(button.dataset.dayIndex);
-    const activityId = button.dataset.activityId;
-    const activity = tripData.days[dayIdx].activities.find(act => act.id === activityId);
     
-    if (!activity || !activity.title) {
-        showToastMessage("관광지명이 존재하지 않아 DB에서 불러올 수 없습니다.", true);
-        return;
-    }
+    // DB 불러오기 창 띄우기 모드로 변수 세팅
+    pendingNewActivityDayIndex = button.dataset.dayIndex;
+    pendingSyncActivityId = button.dataset.activityId;
     
-    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
-
-    const originalHTML = button.innerHTML;
-    button.innerHTML = `<svg class="w-4 h-4 animate-spin text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`;
-
-    try {
-        const querySnapshot = await db.collection("attractions").where("title", "==", activity.title).get();
-        if (!querySnapshot.empty) {
-            const docData = querySnapshot.docs[0].data();
-            
-            if (!confirm(`관광지 DB에서 "${activity.title}" 정보를 찾았습니다.\n현재 일정을 DB의 정보로 덮어씌우시겠습니까?`)) {
-                return; // 사용자가 취소하면 중단
-            }
-
-            // 업데이트할 내용 (id, time, title은 유지)
-            activity.icon = docData.icon || '';
-            activity.description = docData.description || '';
-            activity.imageUrl = docData.imageUrl || '';
-            activity.cost = docData.cost || '';
-            activity.notes = docData.notes || '';
-            
-            renderTrip(); // 화면 갱신
-            /* saveTripToFirestore(); */
-            showToastMessage(`관광지 "${activity.title}" 정보가 DB 최신 내용으로 갱신되었습니다.`);
-        } else {
-            showToastMessage(`관광지 DB에 "${activity.title}"와(과) 일치하는 데이터가 없습니다.`, true);
-        }
-    } catch (e) {
-        console.error("Error syncing attraction from DB: ", e);
-        showToastMessage("DB 동기화 중 오류가 발생했습니다.", true);
-    } finally {
-        button.innerHTML = originalHTML;
-    }
+    // 모달 타이틀(선택 사항): 상황에 맞게 텍스트 분기 가능하지만 여기선 그대로 띄움
+    loadAttractionListFromFirestore();
 }
 
 // --- Firestore 연동 함수 ---
@@ -679,6 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelLoadAttractionModalButton.addEventListener('click', () => {
             if(loadAttractionModal) loadAttractionModal.classList.add('hidden');
             pendingNewActivityDayIndex = null;
+            pendingSyncActivityId = null;
             hideAttractionPreviewCard();
         });
     }
@@ -836,8 +803,29 @@ function renderFilteredAttractionList() {
             
             contentSpan.addEventListener('click', () => {
                 hideAttractionPreviewCard();
-                // pendingNewActivityDayIndex가 있으면: 바로 일정에 추가
-                if (pendingNewActivityDayIndex !== null) {
+                if (pendingSyncActivityId !== null && pendingNewActivityDayIndex !== null) {
+                    // 덮어쓰기(동기화) 모드
+                    const dayIdx = parseInt(pendingNewActivityDayIndex);
+                    if (tripData.days[dayIdx]) {
+                        const activityIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === pendingSyncActivityId);
+                        if (activityIndex > -1) {
+                            const activity = tripData.days[dayIdx].activities[activityIndex];
+                            activity.icon = attr.icon || '';
+                            activity.title = attr.title || '';
+                            activity.description = attr.description || '';
+                            activity.imageUrl = attr.imageUrl || '';
+                            activity.cost = attr.cost || '';
+                            activity.notes = attr.notes || '';
+                            renderTrip();
+                            /* saveTripToFirestore(); */
+                            showToastMessage(`일정이 관광지 DB의 "${attr.title}" 정보로 덮어씌워졌습니다.`);
+                        }
+                    }
+                    if (loadAttractionModal) loadAttractionModal.classList.add('hidden');
+                    pendingNewActivityDayIndex = null;
+                    pendingSyncActivityId = null;
+                } else if (pendingNewActivityDayIndex !== null) {
+                    // 새 항목 추가 모드
                     const dayIdx = parseInt(pendingNewActivityDayIndex);
                     if (tripData.days[dayIdx]) {
                         const newActivity = {
