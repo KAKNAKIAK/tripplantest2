@@ -285,6 +285,31 @@ async function handleSave(e) {
     };
 
     try {
+        const querySnapshot = await db.collection("attractions").where("title", "==", title).get();
+        let isExactDuplicate = false;
+
+        if (!querySnapshot.empty) {
+            querySnapshot.forEach(doc => {
+                // 수정 시 자기 자신이면 제외
+                if (docId && doc.id === docId) return;
+                
+                const existing = doc.data();
+                if ((existing.icon || '') === data.icon &&
+                    (existing.description || '') === data.description &&
+                    (existing.locationLink || '') === data.locationLink &&
+                    (existing.imageUrl || '') === data.imageUrl &&
+                    (existing.cost || '') === data.cost &&
+                    (existing.notes || '') === data.notes) {
+                    isExactDuplicate = true;
+                }
+            });
+        }
+
+        if (isExactDuplicate) {
+            if (!confirm(`관광지 "${title}"와 모든 내용이 동일한 데이터가 이미 존재합니다.\n그래도 저장하시겠습니까?`)) {
+                return;
+            }
+        }
         if (docId) {
             await db.collection("attractions").doc(docId).set(data, { merge: true });
             const idx = allAttractions.findIndex(a => a.id === docId);

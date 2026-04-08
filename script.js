@@ -703,7 +703,27 @@ async function saveAttractionToFirestore() {
     try {
         const querySnapshot = await db.collection("attractions").where("title", "==", title).get();
         if (!querySnapshot.empty) {
-            const docId = querySnapshot.docs[0].id;
+            // 모든 필드 비교하여 완전 중복 확인
+            const existingDoc = querySnapshot.docs[0];
+            const existing = existingDoc.data();
+            const isExactDuplicate = (
+                (existing.icon || '') === icon &&
+                (existing.description || '') === description &&
+                (existing.locationLink || '') === locationLink &&
+                (existing.imageUrl || '') === imageUrl &&
+                (existing.cost || '') === cost &&
+                (existing.notes || '') === notes
+            );
+
+            if (isExactDuplicate) {
+                if (!confirm(`관광지 "${title}"와 모든 내용이 동일한 데이터가 이미 존재합니다.\n그래도 저장하시겠습니까?`)) {
+                    saveToAttractionDbButton.textContent = originalText;
+                    saveToAttractionDbButton.disabled = false;
+                    return;
+                }
+            }
+
+            const docId = existingDoc.id;
             await db.collection("attractions").doc(docId).set(attractionData, { merge: true });
             showToastMessage(`관광지 "${title}" 정보가 성공적으로 갱신되었습니다.`);
         } else {
