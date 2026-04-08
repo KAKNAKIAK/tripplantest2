@@ -630,6 +630,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelLoadAttractionModalButton) {
         cancelLoadAttractionModalButton.addEventListener('click', () => {
             if(loadAttractionModal) loadAttractionModal.classList.add('hidden');
+            pendingNewActivityDayIndex = null;
+            hideAttractionPreviewCard();
         });
     }
     if (attractionSearchInput) {
@@ -768,13 +770,32 @@ function renderFilteredAttractionList() {
             contentSpan.innerHTML = `<span>${attr.icon || ''}</span> <span>${attr.title}</span>`;
             
             contentSpan.addEventListener('click', () => {
-                loadAttractionModal.classList.add('hidden');
-                // pendingNewActivityDayIndex가 있으면: 선택 모달 흐름 (빈 모달 열고 데이터 채움)
+                hideAttractionPreviewCard();
+                // pendingNewActivityDayIndex가 있으면: 바로 일정에 추가
                 if (pendingNewActivityDayIndex !== null) {
-                    openBlankActivityModal(pendingNewActivityDayIndex);
-                    pendingNewActivityDayIndex = null;
+                    const dayIdx = parseInt(pendingNewActivityDayIndex);
+                    if (tripData.days[dayIdx]) {
+                        const newActivity = {
+                            id: generateId(),
+                            time: '',
+                            icon: attr.icon || '',
+                            title: attr.title || '',
+                            description: attr.description || '',
+                            locationLink: attr.locationLink || '',
+                            imageUrl: attr.imageUrl || '',
+                            cost: attr.cost || '',
+                            notes: attr.notes || ''
+                        };
+                        tripData.days[dayIdx].activities.push(newActivity);
+                        renderTrip();
+                        showToastMessage(`"${attr.title}" 일정이 DAY ${dayIdx + 1}에 추가되었습니다.`);
+                    }
+                    // 모달은 닫지 않고 계속 추가 가능 (여러 개 연속 추가)
+                } else {
+                    // 기존 흐름: 활동 모달에서 불러오기 (모달 안의 "관광지 DB" 버튼)
+                    loadAttractionModal.classList.add('hidden');
+                    populateActivityModalWithAttraction(attr);
                 }
-                populateActivityModalWithAttraction(attr);
             });
 
             // --- 마우스 호버 미리보기 카드 ---
