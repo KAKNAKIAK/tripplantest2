@@ -129,6 +129,7 @@ const saveIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" 
 const cancelIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
 const duplicateIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`;
 const deleteIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`;
+const saveAttractionDbIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
 
 
 // --- Rendering Functions for Main App ---
@@ -186,9 +187,10 @@ function renderActivities(activitiesListElement, activities, dayIndex) {
     (activities || []).forEach((activity) => {
         const card = document.createElement('div'); card.className = 'activity-card'; card.setAttribute('data-activity-id', activity.id);
         let imageHTML = ''; if (activity.imageUrl) { imageHTML = `<img src="${activity.imageUrl}" alt="${activity.title || '활동 이미지'}" class="card-image" onerror="this.style.display='none';">`; }
-        card.innerHTML = `<div class="card-time-icon-area">${activity.icon ? `<div class="card-icon">${activity.icon}</div>` : '<div class="card-icon" style="height: 28.8px;"></div>'}<div class="card-time">${formatTimeToHHMM(activity.time)}</div></div><div class="card-details-area"><div class="card-title">${activity.title || ''}</div>${activity.description ? `<div class="card-description">${activity.description}</div>` : ''}${imageHTML}${activity.locationLink ? `<div class="card-location">📍 <a href="${activity.locationLink}" target="_blank" rel="noopener noreferrer">${activity.locationLink.length > 30 ? activity.locationLink.substring(0,27) + '...' : activity.locationLink}</a></div>` : ''}${activity.cost ? `<div class="card-cost">💰 ${activity.cost}</div>` : ''}${activity.notes ? `<div class="card-notes">📝 ${activity.notes}</div>` : ''}</div><div class="card-actions-direct"><button class="icon-button card-action-icon-button edit-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="수정">${editIconSVG}</button><button class="icon-button card-action-icon-button duplicate-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="복제">${duplicateIconSVG}</button><button class="icon-button card-action-icon-button delete-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="삭제">${deleteIconSVG}</button></div>`;
+        card.innerHTML = `<div class="card-time-icon-area">${activity.icon ? `<div class="card-icon">${activity.icon}</div>` : '<div class="card-icon" style="height: 28.8px;"></div>'}<div class="card-time">${formatTimeToHHMM(activity.time)}</div></div><div class="card-details-area"><div class="card-title">${activity.title || ''}</div>${activity.description ? `<div class="card-description">${activity.description}</div>` : ''}${imageHTML}${activity.cost ? `<div class="card-cost">💰 ${activity.cost}</div>` : ''}${activity.notes ? `<div class="card-notes">📝 ${activity.notes}</div>` : ''}</div><div class="card-actions-direct"><button class="icon-button card-action-icon-button overwrite-activity-db-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="이 일정으로 관광지 DB 덮어쓰기">${saveAttractionDbIconSVG}</button><button class="icon-button card-action-icon-button edit-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="수정">${editIconSVG}</button><button class="icon-button card-action-icon-button duplicate-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="복제">${duplicateIconSVG}</button><button class="icon-button card-action-icon-button delete-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="삭제">${deleteIconSVG}</button></div>`;
         activitiesListElement.appendChild(card);
     });
+    activitiesListElement.querySelectorAll('.overwrite-activity-db-button').forEach(button => { button.addEventListener('click', handleOverwriteActivityToAttractionDb); });
     activitiesListElement.querySelectorAll('.edit-activity-button').forEach(button => { button.addEventListener('click', handleOpenActivityModalForEdit); });
     activitiesListElement.querySelectorAll('.delete-activity-button').forEach(button => button.addEventListener('click', handleDeleteActivity));
     activitiesListElement.querySelectorAll('.duplicate-activity-button').forEach(button => button.addEventListener('click', handleDuplicateActivity));
@@ -239,7 +241,6 @@ function populateAndOpenEditActivityModal(dayIdxStr, activityIdToEdit) {
         if(activityTimeInput) activityTimeInput.value = activity.time || ""; if(activityIconSelect) activityIconSelect.value = activity.icon || "";
         const titleEl = document.getElementById('activityTitle'); if(titleEl) titleEl.value = activity.title || "";
         const descEl = document.getElementById('activityDescription'); if(descEl) descEl.value = activity.description || "";
-        const locEl = document.getElementById('activityLocation'); if(locEl) locEl.value = activity.locationLink || "";
         const imgEl = document.getElementById('activityImageUrl'); if(imgEl) imgEl.value = activity.imageUrl || "";
         const costEl = document.getElementById('activityCost'); if(costEl) costEl.value = activity.cost || "";
         const notesEl = document.getElementById('activityNotes'); if(notesEl) notesEl.value = activity.notes || "";
@@ -252,7 +253,7 @@ if (activityForm) activityForm.addEventListener('submit', (e) => {
     e.preventDefault(); const dayIdx = parseInt(dayIndexInput.value); const currentActivityId = activityIdInput.value;
     let timeValue = activityTimeInput.value.trim();
     if (timeValue.length > 0) { if (timeValue.length !== 4 || !/^\d{4}$/.test(timeValue)) { showToastMessage("시간은 HHMM 형식의 4자리 숫자로 입력하거나 비워두세요.", true); return; } const hours = parseInt(timeValue.substring(0, 2), 10); const minutes = parseInt(timeValue.substring(2, 4), 10); if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) { showToastMessage("유효하지 않은 시간입니다.", true); return; } }
-    const activityData = { id: currentActivityId || generateId(), time: timeValue, icon: activityIconSelect.value, title: document.getElementById('activityTitle').value, description: document.getElementById('activityDescription').value, locationLink: document.getElementById('activityLocation').value, imageUrl: document.getElementById('activityImageUrl').value, cost: document.getElementById('activityCost').value, notes: document.getElementById('activityNotes').value };
+    const activityData = { id: currentActivityId || generateId(), time: timeValue, icon: activityIconSelect.value, title: document.getElementById('activityTitle').value, description: document.getElementById('activityDescription').value, imageUrl: document.getElementById('activityImageUrl').value, cost: document.getElementById('activityCost').value, notes: document.getElementById('activityNotes').value };
     if (currentActivityId) { const activityIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === currentActivityId); if (activityIndex > -1) { tripData.days[dayIdx].activities[activityIndex] = activityData; } } else { if(tripData.days[dayIdx]) tripData.days[dayIdx].activities.push(activityData); }
     if(activityModal) activityModal.classList.add('hidden'); renderTrip(); /* saveTripToFirestore(); */
 });
@@ -265,8 +266,55 @@ function showConfirmDeleteDayModal(dayIdx) { dayIndexToDelete = dayIdx; const da
 function hideConfirmDeleteDayModal() { if(confirmDeleteDayModal) confirmDeleteDayModal.classList.add('hidden'); dayIndexToDelete = -1; }
 if (confirmDeleteDayActionButton) confirmDeleteDayActionButton.addEventListener('click', () => { if (dayIndexToDelete > -1 && dayIndexToDelete < tripData.days.length) { tripData.days.splice(dayIndexToDelete, 1); recalculateAllDates(); renderTrip(); /* saveTripToFirestore(); */ } hideConfirmDeleteDayModal(); });
 if (cancelDeleteDayButton) cancelDeleteDayButton.addEventListener('click', hideConfirmDeleteDayModal);
-function handleDeleteActivity(event) { const button = event.currentTarget; const dayIdx = button.dataset.dayIndex; const activityIdToDelete = button.dataset.activityId; tripData.days[dayIdx].activities = tripData.days[dayIdx].activities.filter(act => act.id !== activityIdToDelete); renderTrip(); /* saveTripToFirestore(); */ }
 function handleDuplicateActivity(event) { const button = event.currentTarget; const dayIdx = parseInt(button.dataset.dayIndex); const activityIdToDuplicate = button.dataset.activityId; const activityToDuplicate = tripData.days[dayIdx].activities.find(act => act.id === activityIdToDuplicate); if (activityToDuplicate) { const newActivity = { ...activityToDuplicate, id: generateId(), title: `${activityToDuplicate.title} (복사본)` }; const originalIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === activityIdToDuplicate); tripData.days[dayIdx].activities.splice(originalIndex + 1, 0, newActivity); renderTrip(); /* saveTripToFirestore(); */ } }
+
+async function handleOverwriteActivityToAttractionDb(event) {
+    const button = event.currentTarget;
+    const dayIdx = parseInt(button.dataset.dayIndex);
+    const activityId = button.dataset.activityId;
+    const activity = tripData.days[dayIdx].activities.find(act => act.id === activityId);
+    
+    if (!activity || !activity.title) {
+        showToastMessage("관광지명이 존재하지 않아 DB에 저장할 수 없습니다.", true);
+        return;
+    }
+    
+    if (!confirm(`현재 일정의 내용으로 관광지 DB의 '${activity.title}' 정보를 덮어쓰거나 추가하시겠습니까?`)) {
+        return;
+    }
+
+    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
+
+    const originalHTML = button.innerHTML;
+    button.innerHTML = `<svg class="w-4 h-4 animate-spin text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`;
+
+    const attractionData = {
+        title: activity.title,
+        icon: activity.icon || '',
+        description: activity.description || '',
+        imageUrl: activity.imageUrl || '',
+        cost: activity.cost || '',
+        notes: activity.notes || '',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        const querySnapshot = await db.collection("attractions").where("title", "==", activity.title).get();
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            await db.collection("attractions").doc(docId).set(attractionData, { merge: true });
+            showToastMessage(`관광지 DB "${activity.title}" 정보가 업데이트되었습니다.`);
+        } else {
+            await db.collection("attractions").add(attractionData);
+            showToastMessage(`관광지 DB "${activity.title}" 정보가 새로 등록되었습니다.`);
+        }
+    } catch (e) {
+        console.error("Error saving attraction to DB: ", e);
+        showToastMessage("관광지 DB 덮어쓰기 중 오류가 발생했습니다.", true);
+    } finally {
+        button.innerHTML = originalHTML;
+    }
+}
 
 // --- Firestore 연동 함수 ---
 async function saveTripToFirestore(isSaveAsNew = false) {
@@ -684,7 +732,6 @@ async function saveAttractionToFirestore() {
 
     const icon = activityIconSelect ? activityIconSelect.value : '';
     const description = activityDescription ? activityDescription.value.trim() : '';
-    const locationLink = activityLocation ? activityLocation.value.trim() : '';
     const imageUrl = activityImageUrl ? activityImageUrl.value.trim() : '';
     const cost = activityCost ? activityCost.value.trim() : '';
     const notes = activityNotes ? activityNotes.value.trim() : '';
@@ -693,7 +740,6 @@ async function saveAttractionToFirestore() {
         title,
         icon,
         description,
-        locationLink,
         imageUrl,
         cost,
         notes,
@@ -709,7 +755,6 @@ async function saveAttractionToFirestore() {
             const isExactDuplicate = (
                 (existing.icon || '') === icon &&
                 (existing.description || '') === description &&
-                (existing.locationLink || '') === locationLink &&
                 (existing.imageUrl || '') === imageUrl &&
                 (existing.cost || '') === cost &&
                 (existing.notes || '') === notes
@@ -801,7 +846,6 @@ function renderFilteredAttractionList() {
                             icon: attr.icon || '',
                             title: attr.title || '',
                             description: attr.description || '',
-                            locationLink: attr.locationLink || '',
                             imageUrl: attr.imageUrl || '',
                             cost: attr.cost || '',
                             notes: attr.notes || ''
@@ -877,7 +921,6 @@ function showAttractionPreviewCard(attr, anchorEl) {
     }
     let costHTML = attr.cost ? `<div style="font-size:11px;background:#f3f0ff;color:#7c3aed;display:inline-block;padding:2px 8px;border-radius:6px;margin-top:4px;">💰 ${attr.cost}</div>` : '';
     let notesHTML = attr.notes ? `<div style="font-size:11px;color:#9ca3af;margin-top:4px;">📝 ${attr.notes}</div>` : '';
-    let locationHTML = attr.locationLink ? `<div style="font-size:11px;color:#3b82f6;margin-top:4px;">📍 위치 정보 있음</div>` : '';
 
     card.innerHTML = `
         ${imageHTML}
@@ -886,7 +929,6 @@ function showAttractionPreviewCard(attr, anchorEl) {
             <span style="font-weight:600;font-size:14px;">${attr.title}</span>
         </div>
         ${attr.description ? `<div style="font-size:12px;color:#6b7280;line-height:1.4;">${attr.description}</div>` : ''}
-        ${locationHTML}
         ${costHTML}
         ${notesHTML}
     `;
@@ -941,7 +983,6 @@ function populateActivityModalWithAttraction(attr) {
     if(activityTitle) activityTitle.value = attr.title || '';
     if(activityIconSelect) activityIconSelect.value = attr.icon || (travelEmojis[0] ? travelEmojis[0].value : '');
     if(activityDescription) activityDescription.value = attr.description || '';
-    if(activityLocation) activityLocation.value = attr.locationLink || '';
     if(activityImageUrl) activityImageUrl.value = attr.imageUrl || '';
     if(activityCost) activityCost.value = attr.cost || '';
     if(activityNotes) activityNotes.value = attr.notes || '';

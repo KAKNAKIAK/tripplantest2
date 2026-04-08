@@ -43,7 +43,6 @@ const editId = document.getElementById('editId');
 const editIcon = document.getElementById('editIcon');
 const editTitle = document.getElementById('editTitle');
 const editDescription = document.getElementById('editDescription');
-const editLocation = document.getElementById('editLocation');
 const editImageUrl = document.getElementById('editImageUrl');
 const editCost = document.getElementById('editCost');
 const editNotes = document.getElementById('editNotes');
@@ -152,14 +151,6 @@ function renderCardItem(attr, index) {
         imageHTML = `<img src="${attr.imageUrl}" alt="${attr.title}" class="card-image" onerror="this.style.display='none'">`;
     }
 
-    let locationHTML = '';
-    if (attr.locationLink) {
-        locationHTML = `<a href="${attr.locationLink}" target="_blank" rel="noopener" class="text-xs text-blue-500 hover:underline inline-flex items-center gap-1 mt-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            위치 보기
-        </a>`;
-    }
-
     let costHTML = '';
     if (attr.cost) {
         costHTML = `<div class="tag mt-2">💰 ${attr.cost}</div>`;
@@ -183,7 +174,6 @@ function renderCardItem(attr, index) {
         </div>
         ${attr.description ? `<p class="text-xs text-gray-500 leading-relaxed">${attr.description}</p>` : ''}
         ${imageHTML}
-        ${locationHTML}
         ${costHTML}
         ${notesHTML}
     `;
@@ -199,7 +189,6 @@ function renderListItem(attr, index) {
 
     let metaChips = '';
     if (attr.cost) metaChips += `<span class="tag">💰 ${attr.cost}</span>`;
-    if (attr.locationLink) metaChips += `<a href="${attr.locationLink}" target="_blank" rel="noopener" class="tag" style="background:#eff6ff;color:#2563eb;text-decoration:none;">📍 위치</a>`;
 
     item.innerHTML = `
         <span class="text-2xl flex-shrink-0">${attr.icon || '📍'}</span>
@@ -230,7 +219,6 @@ function openEditModal(id = null) {
         editIcon.value = attr.icon || '';
         editTitle.value = attr.title || '';
         editDescription.value = attr.description || '';
-        editLocation.value = attr.locationLink || '';
         editImageUrl.value = attr.imageUrl || '';
         editCost.value = attr.cost || '';
         editNotes.value = attr.notes || '';
@@ -277,7 +265,6 @@ async function handleSave(e) {
         title,
         icon: editIcon.value || '',
         description: editDescription.value.trim(),
-        locationLink: editLocation.value.trim(),
         imageUrl: editImageUrl.value.trim(),
         cost: editCost.value.trim(),
         notes: editNotes.value.trim(),
@@ -296,7 +283,6 @@ async function handleSave(e) {
                 const existing = doc.data();
                 if ((existing.icon || '') === data.icon &&
                     (existing.description || '') === data.description &&
-                    (existing.locationLink || '') === data.locationLink &&
                     (existing.imageUrl || '') === data.imageUrl &&
                     (existing.cost || '') === data.cost &&
                     (existing.notes || '') === data.notes) {
