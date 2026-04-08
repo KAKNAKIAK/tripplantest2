@@ -209,7 +209,26 @@ function handleCancelDateEdit(event) { const dayIndex = parseInt(event.currentTa
 function handleToggleDayCollapse(event) { const dayHeaderContainer = event.target.closest('.day-header-container'); if (!dayHeaderContainer) return; const dayIndexElement = dayHeaderContainer.querySelector('[data-day-index]'); if (!dayIndexElement) return; const dayIndex = parseInt(dayIndexElement.dataset.dayIndex); const day = tripData.days[dayIndex]; if (day.editingDate) return; const dayContentWrapper = dayHeaderContainer.nextElementSibling; const toggleButtonElement = dayHeaderContainer.querySelector('.day-toggle-button'); const expandedIcon = `<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`; const collapsedIcon = `<svg class="toggle-icon w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`; day.isCollapsed = !day.isCollapsed; if (dayContentWrapper) dayContentWrapper.classList.toggle('hidden', day.isCollapsed); if (toggleButtonElement) { toggleButtonElement.innerHTML = day.isCollapsed ? collapsedIcon : expandedIcon; } /* saveTripToFirestore(); */ }
 
 // --- Activity Modal Logic ---
-function handleOpenActivityModalForNew(event) { const dayIdx = event.currentTarget.dataset.dayIndex; if(modalTitle) modalTitle.textContent = '새 일정 추가'; if(activityForm) activityForm.reset(); populateIconDropdown(); if(activityIconSelect) activityIconSelect.value = travelEmojis[0].value; if(activityTimeInput) activityTimeInput.value = ''; if(activityIdInput) activityIdInput.value = ''; if(dayIndexInput) dayIndexInput.value = dayIdx; if(activityModal) activityModal.classList.remove('hidden'); }
+let pendingNewActivityDayIndex = null; // 선택 모달에서 사용할 dayIndex 보관
+
+function handleOpenActivityModalForNew(event) {
+    const dayIdx = event.currentTarget.dataset.dayIndex;
+    pendingNewActivityDayIndex = dayIdx;
+    // 선택 모달 열기
+    const choiceModal = document.getElementById('addActivityChoiceModal');
+    if (choiceModal) choiceModal.classList.remove('hidden');
+}
+
+function openBlankActivityModal(dayIdx) {
+    if(modalTitle) modalTitle.textContent = '새 일정 추가';
+    if(activityForm) activityForm.reset();
+    populateIconDropdown();
+    if(activityIconSelect) activityIconSelect.value = travelEmojis[0].value;
+    if(activityTimeInput) activityTimeInput.value = '';
+    if(activityIdInput) activityIdInput.value = '';
+    if(dayIndexInput) dayIndexInput.value = dayIdx;
+    if(activityModal) activityModal.classList.remove('hidden');
+}
 function populateAndOpenEditActivityModal(dayIdxStr, activityIdToEdit) {
     const dayIdx = parseInt(dayIdxStr, 10); const day = tripData.days[dayIdx];
     if (!day || !day.activities) { console.error(`Day index ${dayIdx} not found or has no activities.`); showToastMessage("일정을 수정하는 중 오류가 발생했습니다.", true); return; }
@@ -615,6 +634,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (attractionSearchInput) {
         attractionSearchInput.addEventListener('input', renderFilteredAttractionList);
+    }
+
+    // --- 선택 모달(DB에서 가져오기 / 새로 입력) 이벤트 ---
+    const addActivityChoiceModal = document.getElementById('addActivityChoiceModal');
+    const choiceFromDbBtn = document.getElementById('choiceFromDbBtn');
+    const choiceNewInputBtn = document.getElementById('choiceNewInputBtn');
+    const choiceCancelBtn = document.getElementById('choiceCancelBtn');
+
+    if (choiceFromDbBtn) {
+        choiceFromDbBtn.addEventListener('click', () => {
+            if (addActivityChoiceModal) addActivityChoiceModal.classList.add('hidden');
+            // 먼저 빈 활동 모달 열기 (dayIndex 설정)
+            if (pendingNewActivityDayIndex !== null) {
+                openBlankActivityModal(pendingNewActivityDayIndex);
+            }
+            // 그 위에 관광지 DB 목록 모달 열기
+            loadAttractionListFromFirestore();
+        });
+    }
+    if (choiceNewInputBtn) {
+        choiceNewInputBtn.addEventListener('click', () => {
+            if (addActivityChoiceModal) addActivityChoiceModal.classList.add('hidden');
+            if (pendingNewActivityDayIndex !== null) {
+                openBlankActivityModal(pendingNewActivityDayIndex);
+            }
+        });
+    }
+    if (choiceCancelBtn) {
+        choiceCancelBtn.addEventListener('click', () => {
+            if (addActivityChoiceModal) addActivityChoiceModal.classList.add('hidden');
+            pendingNewActivityDayIndex = null;
+        });
     }
 
     renderTrip();
