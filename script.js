@@ -266,6 +266,8 @@ function showConfirmDeleteDayModal(dayIdx) { dayIndexToDelete = dayIdx; const da
 function hideConfirmDeleteDayModal() { if(confirmDeleteDayModal) confirmDeleteDayModal.classList.add('hidden'); dayIndexToDelete = -1; }
 if (confirmDeleteDayActionButton) confirmDeleteDayActionButton.addEventListener('click', () => { if (dayIndexToDelete > -1 && dayIndexToDelete < tripData.days.length) { tripData.days.splice(dayIndexToDelete, 1); recalculateAllDates(); renderTrip(); /* saveTripToFirestore(); */ } hideConfirmDeleteDayModal(); });
 if (cancelDeleteDayButton) cancelDeleteDayButton.addEventListener('click', hideConfirmDeleteDayModal);
+
+function handleDeleteActivity(event) { const button = event.currentTarget; const dayIdx = button.dataset.dayIndex; const activityIdToDelete = button.dataset.activityId; tripData.days[dayIdx].activities = tripData.days[dayIdx].activities.filter(act => act.id !== activityIdToDelete); renderTrip(); /* saveTripToFirestore(); */ }
 function handleDuplicateActivity(event) { const button = event.currentTarget; const dayIdx = parseInt(button.dataset.dayIndex); const activityIdToDuplicate = button.dataset.activityId; const activityToDuplicate = tripData.days[dayIdx].activities.find(act => act.id === activityIdToDuplicate); if (activityToDuplicate) { const newActivity = { ...activityToDuplicate, id: generateId(), title: `${activityToDuplicate.title} (복사본)` }; const originalIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === activityIdToDuplicate); tripData.days[dayIdx].activities.splice(originalIndex + 1, 0, newActivity); renderTrip(); /* saveTripToFirestore(); */ } }
 
 async function handleSyncActivityFromAttractionDb(event) {
