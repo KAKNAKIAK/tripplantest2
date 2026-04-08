@@ -645,11 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (choiceFromDbBtn) {
         choiceFromDbBtn.addEventListener('click', () => {
             if (addActivityChoiceModal) addActivityChoiceModal.classList.add('hidden');
-            // 먼저 빈 활동 모달 열기 (dayIndex 설정)
-            if (pendingNewActivityDayIndex !== null) {
-                openBlankActivityModal(pendingNewActivityDayIndex);
-            }
-            // 그 위에 관광지 DB 목록 모달 열기
+            // 바로 관광지 DB 목록 모달만 열기 (빈 활동 모달 안 열음)
             loadAttractionListFromFirestore();
         });
     }
@@ -754,6 +750,9 @@ async function loadAttractionListFromFirestore() {
 function renderFilteredAttractionList() {
     if (!attractionListForLoad) return;
     attractionListForLoad.innerHTML = '';
+    // 기존 미리보기 카드 제거
+    const existingPreview = document.getElementById('attractionHoverPreview');
+    if (existingPreview) existingPreview.remove();
     const searchTerm = attractionSearchInput.value.trim().toLowerCase();
 
     const filteredAttractions = allFetchedAttractions.filter(attr => attr.title && attr.title.toLowerCase().includes(searchTerm));
@@ -762,14 +761,28 @@ function renderFilteredAttractionList() {
         filteredAttractions.forEach(attr => {
             const listItem = document.createElement('li');
             listItem.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded group cursor-pointer border-b border-gray-100';
+            listItem.style.position = 'relative';
             
             const contentSpan = document.createElement('div');
             contentSpan.className = 'flex-grow flex items-center gap-2 font-medium';
             contentSpan.innerHTML = `<span>${attr.icon || ''}</span> <span>${attr.title}</span>`;
             
             contentSpan.addEventListener('click', () => {
-                populateActivityModalWithAttraction(attr);
                 loadAttractionModal.classList.add('hidden');
+                // pendingNewActivityDayIndex가 있으면: 선택 모달 흐름 (빈 모달 열고 데이터 채움)
+                if (pendingNewActivityDayIndex !== null) {
+                    openBlankActivityModal(pendingNewActivityDayIndex);
+                    pendingNewActivityDayIndex = null;
+                }
+                populateActivityModalWithAttraction(attr);
+            });
+
+            // --- 마우스 호버 미리보기 카드 ---
+            listItem.addEventListener('mouseenter', (e) => {
+                showAttractionPreviewCard(attr, listItem);
+            });
+            listItem.addEventListener('mouseleave', () => {
+                hideAttractionPreviewCard();
             });
             
             const deleteButton = document.createElement('button');
@@ -796,6 +809,76 @@ function renderFilteredAttractionList() {
             }
         }
     }
+}
+
+// --- 관광지 호버 미리보기 카드 ---
+function showAttractionPreviewCard(attr, anchorEl) {
+    hideAttractionPreviewCard();
+    const card = document.createElement('div');
+    card.id = 'attractionHoverPreview';
+    card.style.cssText = `
+        position: fixed;
+        z-index: 99;
+        width: 280px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+        padding: 14px;
+        pointer-events: none;
+        transition: opacity 0.15s ease;
+        opacity: 0;
+    `;
+
+    let imageHTML = '';
+    if (attr.imageUrl) {
+        imageHTML = `<img src="${attr.imageUrl}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'">`;
+    }
+    let costHTML = attr.cost ? `<div style="font-size:11px;background:#f3f0ff;color:#7c3aed;display:inline-block;padding:2px 8px;border-radius:6px;margin-top:4px;">💰 ${attr.cost}</div>` : '';
+    let notesHTML = attr.notes ? `<div style="font-size:11px;color:#9ca3af;margin-top:4px;">📝 ${attr.notes}</div>` : '';
+    let locationHTML = attr.locationLink ? `<div style="font-size:11px;color:#3b82f6;margin-top:4px;">📍 위치 정보 있음</div>` : '';
+
+    card.innerHTML = `
+        ${imageHTML}
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:20px;">${attr.icon || '📍'}</span>
+            <span style="font-weight:600;font-size:14px;">${attr.title}</span>
+        </div>
+        ${attr.description ? `<div style="font-size:12px;color:#6b7280;line-height:1.4;">${attr.description}</div>` : ''}
+        ${locationHTML}
+        ${costHTML}
+        ${notesHTML}
+    `;
+
+    document.body.appendChild(card);
+
+    // 위치 계산: 모달 안의 리스트 아이템 오른쪽에 표시
+    const rect = anchorEl.getBoundingClientRect();
+    const modalContent = anchorEl.closest('.modal-content');
+    const modalRect = modalContent ? modalContent.getBoundingClientRect() : null;
+
+    let left = modalRect ? modalRect.right + 8 : rect.right + 8;
+    let top = rect.top;
+
+    // 화면 오른쪽을 벗어나면 왼쪽에 표시
+    if (left + 290 > window.innerWidth) {
+        left = modalRect ? modalRect.left - 290 : rect.left - 290;
+    }
+    // 화면 아래를 벗어나면 위로 조정
+    if (top + card.offsetHeight > window.innerHeight - 20) {
+        top = window.innerHeight - card.offsetHeight - 20;
+    }
+    if (top < 10) top = 10;
+
+    card.style.left = left + 'px';
+    card.style.top = top + 'px';
+
+    requestAnimationFrame(() => { card.style.opacity = '1'; });
+}
+
+function hideAttractionPreviewCard() {
+    const card = document.getElementById('attractionHoverPreview');
+    if (card) card.remove();
 }
 
 async function deleteAttractionFromFirestore(id, title) {
