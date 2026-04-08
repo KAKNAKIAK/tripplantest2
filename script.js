@@ -129,7 +129,7 @@ const saveIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" 
 const cancelIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
 const duplicateIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`;
 const deleteIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`;
-const saveAttractionDbIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+const syncFromDbIconSVG = `<svg fill="none" class="w-4 h-4" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>`;
 
 
 // --- Rendering Functions for Main App ---
@@ -187,10 +187,10 @@ function renderActivities(activitiesListElement, activities, dayIndex) {
     (activities || []).forEach((activity) => {
         const card = document.createElement('div'); card.className = 'activity-card'; card.setAttribute('data-activity-id', activity.id);
         let imageHTML = ''; if (activity.imageUrl) { imageHTML = `<img src="${activity.imageUrl}" alt="${activity.title || '활동 이미지'}" class="card-image" onerror="this.style.display='none';">`; }
-        card.innerHTML = `<div class="card-time-icon-area">${activity.icon ? `<div class="card-icon">${activity.icon}</div>` : '<div class="card-icon" style="height: 28.8px;"></div>'}<div class="card-time">${formatTimeToHHMM(activity.time)}</div></div><div class="card-details-area"><div class="card-title">${activity.title || ''}</div>${activity.description ? `<div class="card-description">${activity.description}</div>` : ''}${imageHTML}${activity.cost ? `<div class="card-cost">💰 ${activity.cost}</div>` : ''}${activity.notes ? `<div class="card-notes">📝 ${activity.notes}</div>` : ''}</div><div class="card-actions-direct"><button class="icon-button card-action-icon-button overwrite-activity-db-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="이 일정으로 관광지 DB 덮어쓰기">${saveAttractionDbIconSVG}</button><button class="icon-button card-action-icon-button edit-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="수정">${editIconSVG}</button><button class="icon-button card-action-icon-button duplicate-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="복제">${duplicateIconSVG}</button><button class="icon-button card-action-icon-button delete-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="삭제">${deleteIconSVG}</button></div>`;
+        card.innerHTML = `<div class="card-time-icon-area">${activity.icon ? `<div class="card-icon">${activity.icon}</div>` : '<div class="card-icon" style="height: 28.8px;"></div>'}<div class="card-time">${formatTimeToHHMM(activity.time)}</div></div><div class="card-details-area"><div class="card-title">${activity.title || ''}</div>${activity.description ? `<div class="card-description">${activity.description}</div>` : ''}${imageHTML}${activity.cost ? `<div class="card-cost">💰 ${activity.cost}</div>` : ''}${activity.notes ? `<div class="card-notes">📝 ${activity.notes}</div>` : ''}</div><div class="card-actions-direct"><button class="icon-button card-action-icon-button sync-activity-from-db-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="관광지 DB 최신 정보로 덮어쓰기(동기화)">${syncFromDbIconSVG}</button><button class="icon-button card-action-icon-button edit-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="수정">${editIconSVG}</button><button class="icon-button card-action-icon-button duplicate-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="복제">${duplicateIconSVG}</button><button class="icon-button card-action-icon-button delete-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="삭제">${deleteIconSVG}</button></div>`;
         activitiesListElement.appendChild(card);
     });
-    activitiesListElement.querySelectorAll('.overwrite-activity-db-button').forEach(button => { button.addEventListener('click', handleOverwriteActivityToAttractionDb); });
+    activitiesListElement.querySelectorAll('.sync-activity-from-db-button').forEach(button => { button.addEventListener('click', handleSyncActivityFromAttractionDb); });
     activitiesListElement.querySelectorAll('.edit-activity-button').forEach(button => { button.addEventListener('click', handleOpenActivityModalForEdit); });
     activitiesListElement.querySelectorAll('.delete-activity-button').forEach(button => button.addEventListener('click', handleDeleteActivity));
     activitiesListElement.querySelectorAll('.duplicate-activity-button').forEach(button => button.addEventListener('click', handleDuplicateActivity));
@@ -268,49 +268,47 @@ if (confirmDeleteDayActionButton) confirmDeleteDayActionButton.addEventListener(
 if (cancelDeleteDayButton) cancelDeleteDayButton.addEventListener('click', hideConfirmDeleteDayModal);
 function handleDuplicateActivity(event) { const button = event.currentTarget; const dayIdx = parseInt(button.dataset.dayIndex); const activityIdToDuplicate = button.dataset.activityId; const activityToDuplicate = tripData.days[dayIdx].activities.find(act => act.id === activityIdToDuplicate); if (activityToDuplicate) { const newActivity = { ...activityToDuplicate, id: generateId(), title: `${activityToDuplicate.title} (복사본)` }; const originalIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === activityIdToDuplicate); tripData.days[dayIdx].activities.splice(originalIndex + 1, 0, newActivity); renderTrip(); /* saveTripToFirestore(); */ } }
 
-async function handleOverwriteActivityToAttractionDb(event) {
+async function handleSyncActivityFromAttractionDb(event) {
     const button = event.currentTarget;
     const dayIdx = parseInt(button.dataset.dayIndex);
     const activityId = button.dataset.activityId;
     const activity = tripData.days[dayIdx].activities.find(act => act.id === activityId);
     
     if (!activity || !activity.title) {
-        showToastMessage("관광지명이 존재하지 않아 DB에 저장할 수 없습니다.", true);
+        showToastMessage("관광지명이 존재하지 않아 DB에서 불러올 수 없습니다.", true);
         return;
     }
     
-    if (!confirm(`현재 일정의 내용으로 관광지 DB의 '${activity.title}' 정보를 덮어쓰거나 추가하시겠습니까?`)) {
-        return;
-    }
-
     if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
 
     const originalHTML = button.innerHTML;
     button.innerHTML = `<svg class="w-4 h-4 animate-spin text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`;
 
-    const attractionData = {
-        title: activity.title,
-        icon: activity.icon || '',
-        description: activity.description || '',
-        imageUrl: activity.imageUrl || '',
-        cost: activity.cost || '',
-        notes: activity.notes || '',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
     try {
         const querySnapshot = await db.collection("attractions").where("title", "==", activity.title).get();
         if (!querySnapshot.empty) {
-            const docId = querySnapshot.docs[0].id;
-            await db.collection("attractions").doc(docId).set(attractionData, { merge: true });
-            showToastMessage(`관광지 DB "${activity.title}" 정보가 업데이트되었습니다.`);
+            const docData = querySnapshot.docs[0].data();
+            
+            if (!confirm(`관광지 DB에서 "${activity.title}" 정보를 찾았습니다.\n현재 일정을 DB의 정보로 덮어씌우시겠습니까?`)) {
+                return; // 사용자가 취소하면 중단
+            }
+
+            // 업데이트할 내용 (id, time, title은 유지)
+            activity.icon = docData.icon || '';
+            activity.description = docData.description || '';
+            activity.imageUrl = docData.imageUrl || '';
+            activity.cost = docData.cost || '';
+            activity.notes = docData.notes || '';
+            
+            renderTrip(); // 화면 갱신
+            /* saveTripToFirestore(); */
+            showToastMessage(`관광지 "${activity.title}" 정보가 DB 최신 내용으로 갱신되었습니다.`);
         } else {
-            await db.collection("attractions").add(attractionData);
-            showToastMessage(`관광지 DB "${activity.title}" 정보가 새로 등록되었습니다.`);
+            showToastMessage(`관광지 DB에 "${activity.title}"와(과) 일치하는 데이터가 없습니다.`, true);
         }
     } catch (e) {
-        console.error("Error saving attraction to DB: ", e);
-        showToastMessage("관광지 DB 덮어쓰기 중 오류가 발생했습니다.", true);
+        console.error("Error syncing attraction from DB: ", e);
+        showToastMessage("DB 동기화 중 오류가 발생했습니다.", true);
     } finally {
         button.innerHTML = originalHTML;
     }
