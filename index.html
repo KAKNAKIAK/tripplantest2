@@ -47,6 +47,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                     <span class="hidden sm:inline">미리보기</span>
                 </button>
+                <button id="manageAttractionDbButton" class="action-button bg-purple-500 text-white hover:bg-purple-600" title="관광지 DB 관리">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                    <span class="hidden sm:inline">관광지 DB</span>
+                </button>
 
                 </div>
         </div>
@@ -159,6 +163,69 @@
             <div class="modal-buttons mt-6">
                 <button type="button" id="cancelLoadAttractionModalButton" class="action-button bg-gray-300 hover:bg-gray-400">닫기</button>
             </div>
+        </div>
+    </div>
+
+    <div id="manageAttractionModal" class="modal-backdrop hidden z-[60]">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">🗺️ 관광지 DB 관리</h3>
+                <button type="button" id="addNewAttractionBtn" class="text-sm bg-green-500 text-white hover:bg-green-600 py-1.5 px-3 rounded flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    새 관광지 등록
+                </button>
+            </div>
+            <div class="mb-3">
+                <input type="text" id="manageAttractionSearchInput" placeholder="관광지 이름으로 검색..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div id="manageAttractionListContainer" class="max-h-96 overflow-y-auto border rounded p-2">
+                <p id="manageAttractionLoadingMsg" style="display: none;">목록을 불러오는 중...</p>
+                <div id="manageAttractionList"></div>
+            </div>
+            <div class="modal-buttons mt-4">
+                <button type="button" id="closeManageAttractionModalBtn" class="action-button bg-gray-300 hover:bg-gray-400">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editAttractionModal" class="modal-backdrop hidden z-[70]">
+        <div class="modal-content">
+            <h3 id="editAttractionModalTitle" class="text-lg font-semibold mb-4">관광지 정보 수정</h3>
+            <form id="editAttractionForm">
+                <input type="hidden" id="editAttractionId">
+                <div>
+                    <label for="editAttractionIcon">아이콘 선택:</label>
+                    <select id="editAttractionIcon"></select>
+                </div>
+                <div>
+                    <label for="editAttractionTitle">관광지명:</label>
+                    <input type="text" id="editAttractionTitle" required placeholder="예: 왓 아룬">
+                </div>
+                <div>
+                    <label for="editAttractionDescription">설명/메모:</label>
+                    <textarea id="editAttractionDescription" rows="3" placeholder="예: 방콕 대표 사원"></textarea>
+                </div>
+                <div>
+                    <label for="editAttractionLocation">주소/위치 링크:</label>
+                    <input type="url" id="editAttractionLocation" placeholder="예: https://maps.google.com/...">
+                </div>
+                <div>
+                    <label for="editAttractionImageUrl">이미지 URL:</label>
+                    <input type="url" id="editAttractionImageUrl" placeholder="예: https://example.com/image.jpg">
+                </div>
+                <div>
+                    <label for="editAttractionCost">비용:</label>
+                    <input type="text" id="editAttractionCost" placeholder="예: ฿100">
+                </div>
+                <div>
+                    <label for="editAttractionNotes">기타 메모:</label>
+                    <input type="text" id="editAttractionNotes" placeholder="예: 복장 규정 있음">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" id="cancelEditAttractionBtn" class="action-button bg-gray-300 hover:bg-gray-400">취소</button>
+                    <button type="submit" class="action-button bg-purple-500 text-white hover:bg-purple-600">저장</button>
+                </div>
+            </form>
         </div>
     </div>
 

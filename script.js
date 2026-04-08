@@ -772,3 +772,238 @@ function populateActivityModalWithAttraction(attr) {
     if(activityNotes) activityNotes.value = attr.notes || '';
     showToastMessage(`"${attr.title}" 데이터를 양식에 가져왔습니다.`);
 }
+
+// =============================================
+// --- Attraction DB Management Modal Logic ---
+// =============================================
+const manageAttractionDbButton = document.getElementById('manageAttractionDbButton');
+const manageAttractionModal = document.getElementById('manageAttractionModal');
+const manageAttractionSearchInput = document.getElementById('manageAttractionSearchInput');
+const manageAttractionList = document.getElementById('manageAttractionList');
+const manageAttractionLoadingMsg = document.getElementById('manageAttractionLoadingMsg');
+const closeManageAttractionModalBtn = document.getElementById('closeManageAttractionModalBtn');
+const addNewAttractionBtn = document.getElementById('addNewAttractionBtn');
+
+const editAttractionModal = document.getElementById('editAttractionModal');
+const editAttractionModalTitle = document.getElementById('editAttractionModalTitle');
+const editAttractionForm = document.getElementById('editAttractionForm');
+const editAttractionId = document.getElementById('editAttractionId');
+const editAttractionIcon = document.getElementById('editAttractionIcon');
+const editAttractionTitle = document.getElementById('editAttractionTitle');
+const editAttractionDescription = document.getElementById('editAttractionDescription');
+const editAttractionLocation = document.getElementById('editAttractionLocation');
+const editAttractionImageUrl = document.getElementById('editAttractionImageUrl');
+const editAttractionCost = document.getElementById('editAttractionCost');
+const editAttractionNotes = document.getElementById('editAttractionNotes');
+const cancelEditAttractionBtn = document.getElementById('cancelEditAttractionBtn');
+
+let allManagedAttractions = [];
+
+function populateEditAttractionIconDropdown() {
+    if (!editAttractionIcon) return;
+    editAttractionIcon.innerHTML = '';
+    travelEmojis.forEach(emoji => {
+        const option = document.createElement('option');
+        option.value = emoji.value;
+        option.textContent = emoji.display;
+        editAttractionIcon.appendChild(option);
+    });
+}
+
+async function openManageAttractionModal() {
+    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
+    if (!manageAttractionModal) return;
+
+    manageAttractionModal.classList.remove('hidden');
+    if (manageAttractionSearchInput) manageAttractionSearchInput.value = '';
+    if (manageAttractionLoadingMsg) manageAttractionLoadingMsg.style.display = 'block';
+    if (manageAttractionList) manageAttractionList.innerHTML = '';
+
+    allManagedAttractions = [];
+
+    try {
+        const querySnapshot = await db.collection("attractions").orderBy("title").get();
+        querySnapshot.forEach((doc) => {
+            allManagedAttractions.push({ id: doc.id, ...doc.data() });
+        });
+        if (manageAttractionLoadingMsg) manageAttractionLoadingMsg.style.display = 'none';
+        renderManagedAttractionList();
+    } catch (error) {
+        console.error("Error loading managed attraction list:", error);
+        showToastMessage("관광지 목록 불러오기 중 오류가 발생했습니다.", true);
+        if (manageAttractionLoadingMsg) manageAttractionLoadingMsg.style.display = 'none';
+        renderManagedAttractionList();
+    }
+}
+
+function renderManagedAttractionList() {
+    if (!manageAttractionList) return;
+    manageAttractionList.innerHTML = '';
+    const searchTerm = (manageAttractionSearchInput ? manageAttractionSearchInput.value : '').trim().toLowerCase();
+    const filtered = allManagedAttractions.filter(a => a.title && a.title.toLowerCase().includes(searchTerm));
+
+    if (filtered.length === 0) {
+        const msg = searchTerm && allManagedAttractions.length > 0
+            ? `"${searchTerm}" 검색 결과가 없습니다.`
+            : '저장된 관광지가 없습니다.';
+        manageAttractionList.innerHTML = `<p class="p-3 text-gray-500 text-sm text-center">${msg}</p>`;
+        return;
+    }
+
+    filtered.forEach(attr => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2.5 hover:bg-gray-50 rounded-lg group border-b border-gray-100 last:border-0';
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'flex-grow cursor-pointer min-w-0';
+        
+        const titleRow = document.createElement('div');
+        titleRow.className = 'flex items-center gap-2 font-medium text-sm';
+        titleRow.innerHTML = `<span class="text-lg">${attr.icon || '📍'}</span><span class="truncate">${attr.title}</span>`;
+        infoDiv.appendChild(titleRow);
+
+        if (attr.description) {
+            const descP = document.createElement('p');
+            descP.className = 'text-xs text-gray-500 mt-0.5 ml-8 truncate';
+            descP.textContent = attr.description;
+            infoDiv.appendChild(descP);
+        }
+
+        infoDiv.addEventListener('click', () => openEditAttractionModal(attr));
+
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'flex items-center gap-1 flex-shrink-0 ml-2 opacity-40 group-hover:opacity-100 transition-opacity';
+
+        // 수정 버튼
+        const editBtn = document.createElement('button');
+        editBtn.className = 'icon-button card-action-icon-button';
+        editBtn.title = `"${attr.title}" 수정`;
+        editBtn.innerHTML = editIconSVG;
+        editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditAttractionModal(attr); });
+
+        // 삭제 버튼
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-button card-action-icon-button delete-activity-button';
+        delBtn.title = `"${attr.title}" 삭제`;
+        delBtn.innerHTML = deleteIconSVG;
+        delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteManagedAttraction(attr.id, attr.title);
+        });
+
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(delBtn);
+        item.appendChild(infoDiv);
+        item.appendChild(actionsDiv);
+        manageAttractionList.appendChild(item);
+    });
+}
+
+function openEditAttractionModal(attr = null) {
+    if (!editAttractionModal) return;
+    populateEditAttractionIconDropdown();
+
+    if (attr) {
+        // 수정 모드
+        editAttractionModalTitle.textContent = '관광지 정보 수정';
+        editAttractionId.value = attr.id || '';
+        editAttractionIcon.value = attr.icon || '';
+        editAttractionTitle.value = attr.title || '';
+        editAttractionDescription.value = attr.description || '';
+        editAttractionLocation.value = attr.locationLink || '';
+        editAttractionImageUrl.value = attr.imageUrl || '';
+        editAttractionCost.value = attr.cost || '';
+        editAttractionNotes.value = attr.notes || '';
+    } else {
+        // 새 등록 모드
+        editAttractionModalTitle.textContent = '새 관광지 등록';
+        editAttractionForm.reset();
+        editAttractionId.value = '';
+        editAttractionIcon.value = travelEmojis[0] ? travelEmojis[0].value : '';
+    }
+
+    editAttractionModal.classList.remove('hidden');
+}
+
+async function handleSaveEditAttraction(e) {
+    e.preventDefault();
+    if (!db) { showToastMessage("Firestore가 초기화되지 않았습니다.", true); return; }
+
+    const title = editAttractionTitle.value.trim();
+    if (!title) { showToastMessage("관광지명을 입력해주세요.", true); return; }
+
+    const docId = editAttractionId.value;
+    const attractionData = {
+        title,
+        icon: editAttractionIcon.value || '',
+        description: editAttractionDescription.value.trim(),
+        locationLink: editAttractionLocation.value.trim(),
+        imageUrl: editAttractionImageUrl.value.trim(),
+        cost: editAttractionCost.value.trim(),
+        notes: editAttractionNotes.value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        if (docId) {
+            // 기존 문서 수정
+            await db.collection("attractions").doc(docId).set(attractionData, { merge: true });
+            showToastMessage(`관광지 "${title}" 정보가 업데이트되었습니다.`);
+            // 로컬 배열도 업데이트
+            const idx = allManagedAttractions.findIndex(a => a.id === docId);
+            if (idx > -1) allManagedAttractions[idx] = { id: docId, ...attractionData };
+        } else {
+            // 새 문서 등록
+            const docRef = await db.collection("attractions").add(attractionData);
+            showToastMessage(`관광지 "${title}" 정보가 새롭게 등록되었습니다.`);
+            allManagedAttractions.push({ id: docRef.id, ...attractionData });
+            // 정렬 유지
+            allManagedAttractions.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        }
+
+        editAttractionModal.classList.add('hidden');
+        renderManagedAttractionList();
+    } catch (error) {
+        console.error("Error saving attraction:", error);
+        showToastMessage("관광지 저장 중 오류가 발생했습니다.", true);
+    }
+}
+
+async function deleteManagedAttraction(id, title) {
+    if (!db) return;
+    if (!confirm(`관광지 "${title}" 정보를 영구적으로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+    try {
+        await db.collection("attractions").doc(id).delete();
+        showToastMessage(`관광지 "${title}"가 삭제되었습니다.`);
+        allManagedAttractions = allManagedAttractions.filter(a => a.id !== id);
+        renderManagedAttractionList();
+    } catch (error) {
+        console.error("Error deleting managed attraction:", error);
+        showToastMessage("관광지 삭제 중 오류가 발생했습니다.", true);
+    }
+}
+
+// --- Event Listeners for Attraction Management ---
+if (manageAttractionDbButton) {
+    manageAttractionDbButton.addEventListener('click', openManageAttractionModal);
+}
+if (closeManageAttractionModalBtn) {
+    closeManageAttractionModalBtn.addEventListener('click', () => {
+        if (manageAttractionModal) manageAttractionModal.classList.add('hidden');
+    });
+}
+if (addNewAttractionBtn) {
+    addNewAttractionBtn.addEventListener('click', () => openEditAttractionModal(null));
+}
+if (manageAttractionSearchInput) {
+    manageAttractionSearchInput.addEventListener('input', renderManagedAttractionList);
+}
+if (editAttractionForm) {
+    editAttractionForm.addEventListener('submit', handleSaveEditAttraction);
+}
+if (cancelEditAttractionBtn) {
+    cancelEditAttractionBtn.addEventListener('click', () => {
+        if (editAttractionModal) editAttractionModal.classList.add('hidden');
+    });
+}
