@@ -83,7 +83,7 @@ let allFetchedAttractions = [];
 let dayIndexToDelete = -1;
 // --- Utility Functions ---
 function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
-function formatDate(dateString, dayNumber) { const date = new Date(dateString + "T00:00:00Z"); const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }; return `DAY ${dayNumber}: ${date.toLocaleDateString('ko-KR', options)}`; }
+function formatDate(dateString, dayNumber) { return `DAY ${dayNumber}`; }
 
 function formatTimeToHHMM(timeStr) {
     if (timeStr && timeStr.length === 4 && /^\d{4}$/.test(timeStr)) {
@@ -513,7 +513,7 @@ if (loadHtmlInput) loadHtmlInput.addEventListener('change', (event) => { /* Fire
 
 // --- 인라인 스타일 HTML 생성 및 표시 ---
 function handleInlinePreview() { const inlineHtml = generateInlineStyledHTML(tripData, { includeStyles: true, makePageTitleEmptyForCopy: false }); const previewWindow = window.open('', '_blank'); if (previewWindow) { previewWindow.document.write(inlineHtml); previewWindow.document.close(); } else { showToastMessage("팝업이 차단되었을 수 있습니다.", true); }}
-function formatDateForInlineView(dateString, dayNumber) { const date = new Date(dateString + "T00:00:00Z"); const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }; return `DAY ${dayNumber}: ${date.toLocaleDateString('ko-KR', options)}`; }
+function formatDateForInlineView(dateString, dayNumber) { return `DAY ${dayNumber}`; }
 async function handleCopyInlineHtml() { const inlineHtml = generateInlineStyledHTML(tripData, { includeStyles: false, makePageTitleEmptyForCopy: true }); try { const blobHtml = new Blob([inlineHtml], { type: 'text/html' }); const blobText = new Blob([inlineHtml], { type: 'text/plain' }); const clipboardItem = new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText }); await navigator.clipboard.write([clipboardItem]); showToastMessage('스타일 및 문서 제목이 제외된 인라인 코드가 HTML 형식으로 복사되었습니다.'); } catch (err) { console.error('HTML 형식 클립보드 복사 실패:', err); try { await navigator.clipboard.writeText(inlineHtml); showToastMessage('스타일 및 문서 제목이 제외된 인라인 코드가 일반 텍스트로 복사되었습니다 (HTML 형식 복사 실패).'); } catch (fallbackErr) { console.error('일반 텍스트 클립보드 복사도 실패:', fallbackErr); showToastMessage('클립보드 복사에 최종적으로 실패했습니다.', true); } } }
 function generateInlineStyledHTML(data, options = { includeStyles: true, makePageTitleEmptyForCopy: false }) {
     let daysHTML = ''; const dataForInlineView = JSON.parse(JSON.stringify(data)); if (!dataForInlineView.days) dataForInlineView.days = [];
