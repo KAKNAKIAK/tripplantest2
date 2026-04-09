@@ -164,10 +164,21 @@
         <div class="modal-content" style="max-width: 640px;">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">🗺️ 관광지 DB 관리</h3>
-                <button type="button" id="addNewAttractionBtn" class="text-sm bg-green-500 text-white hover:bg-green-600 py-1.5 px-3 rounded flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    새 관광지 등록
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" id="downloadExcelTemplateBtn" class="text-sm bg-emerald-500 text-white hover:bg-emerald-600 py-1.5 px-3 rounded flex items-center gap-1" title="예시 엑셀 파일 다운로드">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        예시 엑셀
+                    </button>
+                    <button type="button" id="uploadExcelBtn" class="text-sm bg-blue-500 text-white hover:bg-blue-600 py-1.5 px-3 rounded flex items-center gap-1" title="엑셀 파일로 대량 업로드">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        엑셀 업로드
+                    </button>
+                    <input type="file" id="excelUploadInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                    <button type="button" id="addNewAttractionBtn" class="text-sm bg-green-500 text-white hover:bg-green-600 py-1.5 px-3 rounded flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        새 관광지 등록
+                    </button>
+                </div>
             </div>
             <div class="mb-3">
                 <input type="text" id="manageAttractionSearchInput" placeholder="관광지 이름으로 검색..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
@@ -246,6 +257,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <script src="script.js"></script>
 

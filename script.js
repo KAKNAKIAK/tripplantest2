@@ -1211,3 +1211,172 @@ if (cancelEditAttractionBtn) {
         if (editAttractionModal) editAttractionModal.classList.add('hidden');
     });
 }
+
+// =============================================
+// --- Excel Bulk Upload / Template Download ---
+// =============================================
+const downloadExcelTemplateBtn = document.getElementById('downloadExcelTemplateBtn');
+const uploadExcelBtn = document.getElementById('uploadExcelBtn');
+const excelUploadInput = document.getElementById('excelUploadInput');
+
+// 예시 엑셀 템플릿 다운로드
+function handleDownloadExcelTemplate() {
+    if (typeof XLSX === 'undefined') {
+        showToastMessage("엑셀 라이브러리(SheetJS)가 로드되지 않았습니다.", true);
+        return;
+    }
+
+    const headerRow = ['아이콘', '관광지명', '설명', '위치링크', '이미지URL', '비용', '기타메모'];
+    const sampleData = [
+        ['🏛️', '왓 아룬', '방콕의 대표적인 사원, 새벽사원으로 유명', 'https://maps.google.com/?q=Wat+Arun', 'https://example.com/watarun.jpg', '฿100', '반바지/민소매 입장 불가'],
+        ['🍽️', '소이 카우보이', '방콕 대표 야시장 먹거리', '', '', '฿200~500', '저녁 시간 방문 추천'],
+        ['🏞️', '에라완폭포', '7단 폭포, 수영 가능', 'https://maps.google.com/?q=Erawan+Falls', '', '฿300', '수건/수영복 준비']
+    ];
+
+    const wsData = [headerRow, ...sampleData];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // 열 너비 설정
+    ws['!cols'] = [
+        { wch: 8 },   // 아이콘
+        { wch: 20 },  // 관광지명
+        { wch: 35 },  // 설명
+        { wch: 40 },  // 위치링크
+        { wch: 40 },  // 이미지URL
+        { wch: 15 },  // 비용
+        { wch: 25 }   // 기타메모
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '관광지목록');
+
+    XLSX.writeFile(wb, '관광지_업로드_템플릿.xlsx');
+    showToastMessage("예시 엑셀 파일이 다운로드되었습니다.");
+}
+
+// 엑셀 파일 파싱 후 Firestore 대량 업로드
+async function handleExcelUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (typeof XLSX === 'undefined') {
+        showToastMessage("엑셀 라이브러리(SheetJS)가 로드되지 않았습니다.", true);
+        excelUploadInput.value = '';
+        return;
+    }
+    if (!db) {
+        showToastMessage("Firestore가 초기화되지 않았습니다.", true);
+        excelUploadInput.value = '';
+        return;
+    }
+
+    // 헤더 매핑 (엑셀 컬럼명 → Firestore 필드명)
+    const headerMap = {
+        '아이콘': 'icon',
+        '관광지명': 'title',
+        '설명': 'description',
+        '위치링크': 'locationLink',
+        '이미지url': 'imageUrl',
+        '이미지URL': 'imageUrl',
+        '비용': 'cost',
+        '기타메모': 'notes'
+    };
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+        if (jsonData.length === 0) {
+            showToastMessage("엑셀 파일에 데이터가 없습니다.", true);
+            excelUploadInput.value = '';
+            return;
+        }
+
+        // 헤더 키 매핑
+        const attractions = jsonData.map(row => {
+            const mapped = {};
+            Object.keys(row).forEach(key => {
+                const trimmedKey = key.trim();
+                const fieldName = headerMap[trimmedKey];
+                if (fieldName) {
+                    mapped[fieldName] = String(row[key]).trim();
+                }
+            });
+            return mapped;
+        });
+
+        // title이 비어있는 행 필터
+        const validAttractions = attractions.filter(a => a.title && a.title.length > 0);
+
+        if (validAttractions.length === 0) {
+            showToastMessage("업로드할 유효한 데이터가 없습니다. '관광지명' 열을 확인해주세요.", true);
+            excelUploadInput.value = '';
+            return;
+        }
+
+        const confirmMsg = `총 ${validAttractions.length}개의 관광지를 업로드하시겠습니까?\n\n` +
+            validAttractions.slice(0, 5).map((a, i) => `${i + 1}. ${a.icon || ''} ${a.title}`).join('\n') +
+            (validAttractions.length > 5 ? `\n... 외 ${validAttractions.length - 5}개` : '');
+
+        if (!confirm(confirmMsg)) {
+            excelUploadInput.value = '';
+            return;
+        }
+
+        // Firestore에 배치로 저장 (Firestore batch: 최대 500개씩)
+        let successCount = 0;
+        let skipCount = 0;
+        const batchSize = 450; // 안전 마진
+
+        for (let i = 0; i < validAttractions.length; i += batchSize) {
+            const batch = db.batch();
+            const chunk = validAttractions.slice(i, i + batchSize);
+
+            for (const attr of chunk) {
+                const docRef = db.collection("attractions").doc();
+                batch.set(docRef, {
+                    title: attr.title || '',
+                    icon: attr.icon || '',
+                    description: attr.description || '',
+                    locationLink: attr.locationLink || '',
+                    imageUrl: attr.imageUrl || '',
+                    cost: attr.cost || '',
+                    notes: attr.notes || '',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                successCount++;
+            }
+
+            await batch.commit();
+        }
+
+        showToastMessage(`✅ ${successCount}개의 관광지가 성공적으로 업로드되었습니다.`);
+
+        // 관광지 관리 모달이 열려있으면 목록 새로고침
+        if (manageAttractionModal && !manageAttractionModal.classList.contains('hidden')) {
+            openManageAttractionModal();
+        }
+
+    } catch (error) {
+        console.error("Excel upload error:", error);
+        showToastMessage("엑셀 업로드 중 오류가 발생했습니다: " + error.message, true);
+    } finally {
+        excelUploadInput.value = ''; // 파일 입력 초기화
+    }
+}
+
+// 이벤트 리스너 연결
+if (downloadExcelTemplateBtn) {
+    downloadExcelTemplateBtn.addEventListener('click', handleDownloadExcelTemplate);
+}
+if (uploadExcelBtn) {
+    uploadExcelBtn.addEventListener('click', () => {
+        if (excelUploadInput) excelUploadInput.click();
+    });
+}
+if (excelUploadInput) {
+    excelUploadInput.addEventListener('change', handleExcelUpload);
+}
