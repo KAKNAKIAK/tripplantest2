@@ -515,24 +515,76 @@ if (loadHtmlInput) loadHtmlInput.addEventListener('change', (event) => { /* Fire
 function handleInlinePreview() { const inlineHtml = generateInlineStyledHTML(tripData, { includeStyles: true, makePageTitleEmptyForCopy: false }); const previewWindow = window.open('', '_blank'); if (previewWindow) { previewWindow.document.write(inlineHtml); previewWindow.document.close(); } else { showToastMessage("팝업이 차단되었을 수 있습니다.", true); }}
 function formatDateForInlineView(dateString, dayNumber) { return `DAY ${dayNumber}`; }
 async function handleCopyInlineHtml() { const inlineHtml = generateInlineStyledHTML(tripData, { includeStyles: false, makePageTitleEmptyForCopy: true }); try { const blobHtml = new Blob([inlineHtml], { type: 'text/html' }); const blobText = new Blob([inlineHtml], { type: 'text/plain' }); const clipboardItem = new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText }); await navigator.clipboard.write([clipboardItem]); showToastMessage('스타일 및 문서 제목이 제외된 인라인 코드가 HTML 형식으로 복사되었습니다.'); } catch (err) { console.error('HTML 형식 클립보드 복사 실패:', err); try { await navigator.clipboard.writeText(inlineHtml); showToastMessage('스타일 및 문서 제목이 제외된 인라인 코드가 일반 텍스트로 복사되었습니다 (HTML 형식 복사 실패).'); } catch (fallbackErr) { console.error('일반 텍스트 클립보드 복사도 실패:', fallbackErr); showToastMessage('클립보드 복사에 최종적으로 실패했습니다.', true); } } }
-function generateInlineStyledHTML(data, options = { includeStyles: true, makePageTitleEmptyForCopy: false }) {
-    let daysHTML = ''; const dataForInlineView = JSON.parse(JSON.stringify(data)); if (!dataForInlineView.days) dataForInlineView.days = [];
-    dataForInlineView.days.forEach((day, dayIndex) => {
-        let activitiesHTML = ''; (day.activities || []).forEach(activity => {
-            const formattedTime = formatTimeToHHMM(activity.time);
-            let imageDetailHTML = ''; if (activity.imageUrl) { imageDetailHTML = `<details open class="image-details" style="margin-top: 8px;"><summary class="custom-marker-image" style="font-size: 12px; color: #007bff; text-decoration: none; cursor: pointer; display: inline-block;">🖼️ 사진 접기</summary><img src="${activity.imageUrl}" alt="${activity.title || '활동 이미지'}" style="max-width: 300px; height: auto; object-fit: cover; border-radius: 4px; margin-top: 8px; display: block;" onerror="this.style.display='none';"></details>`;}
-            let locationHTML = ''; if (activity.locationLink) { locationHTML = `<div class="card-location" style="font-size: 12px; margin-top: 4px;">📍 <a href="${activity.locationLink}" target="_blank" rel="noopener noreferrer" style="color: #007bff; text-decoration: none;">위치 보기</a></div>`;}
-            let costHTML = ''; if (activity.cost) { costHTML = `<div class="card-cost" style="font-size: 12px; margin-top: 4px;">💰 ${activity.cost}</div>`;}
-            let notesHTML = ''; if (activity.notes) { const notesText = activity.notes.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); notesHTML = `<div class="card-notes" style="font-size: 12px; margin-top: 4px; white-space: pre-wrap;">📝 ${notesText}</div>`;}
-            let descriptionHTML = ''; if(activity.description){ const descriptionText = activity.description.replace(/\n/g, '<br>'); descriptionHTML = `<div class="card-description" style="font-size: 12px; white-space: pre-wrap;">${descriptionText}</div>`;}
-            activitiesHTML += `<div class="readonly-activity-card" style="background-color: white; border-radius: 8px; border: 1px solid #E0E0E0; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex;"><div class="card-time-icon-area" style="width: 100px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start;"><div class="card-icon" style="font-size: 20px; margin-bottom: 4px;">${activity.icon || ' '}</div><div class="card-time" style="font-size: 12px; font-weight: bold; min-height: 18px;">${formattedTime || ' '}</div></div><div class="card-details-area" style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;"><div class="card-title" style="font-size: 14px; font-weight: bold;">${activity.title || ''}</div>${descriptionHTML}${imageDetailHTML}${locationHTML}${costHTML}${notesHTML}</div></div>`;
-        });
-        daysHTML += `<div class="day-section" style="margin-bottom: 16px; border-radius: 0.375rem; background-color: #ffffff; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);"><details ${day.isCollapsed ? '' : 'open'}><summary class="custom-marker" style="display: flex; align-items: center; padding: 12px 8px; border-bottom: 1px solid #EEE; background-color: #fdfdfd; border-radius: 6px 6px 0 0; cursor: pointer;"><div class="day-header-main" style="display: flex; align-items: center; gap: 8px; flex-grow: 1;"><h2 class="day-header-title" style="font-size: 16px; font-weight: 600;">${formatDateForInlineView(day.date, dayIndex + 1)}</h2></div></summary><div class="day-content-wrapper" style="padding: 0 8px 8px 8px;"><div class="activities-list" style="padding-top: 0.75rem;">${activitiesHTML || '<p style="font-size:12px; color: #777; padding: 10px 0;">이 날짜에는 아직 등록된 일정이 없습니다.</p>'}</div></div></details></div>`;
+function generateInlineStyledHTML(data, options = {}) {
+    const hideTitleForCopy = Boolean(options.makePageTitleEmptyForCopy);
+    const dataForInlineView = JSON.parse(JSON.stringify(data || {}));
+    const days = Array.isArray(dataForInlineView.days) ? dataForInlineView.days : [];
+    let daysHTML = '';
+
+    days.forEach((day, dayIndex) => {
+        let activitiesHTML = (day.activities || []).map(activity => {
+            const imageHTML = activity.imageUrl ? `
+              <div style="margin-top:8px;">
+                <img src="${activity.imageUrl}" alt="${activity.title || 'activity image'}" style="max-width: 100%; height:auto;border-radius:4px;display:block;" onerror="this.style.display='none';">
+              </div>` : '';
+            const costHTML = activity.cost ? `<div style="font-size:12px;margin-top:4px;">&#128176; ${activity.cost}</div>` : '';
+            const notesHTML = activity.notes ? `<div style="font-size:12px;margin-top:4px;white-space:pre-wrap;">&#128221; ${String(activity.notes).replace(/\n/g, '<br>')}</div>` : '';
+            const descHTML = activity.description ? `<div style="font-size:12px;white-space:pre-wrap;">${String(activity.description).replace(/\n/g, '<br>')}</div>` : '';
+            const summaryLabel = (activity.title || '').trim() || '\uD65C\uB3D9';
+            const hasExtraDetails = [activity.description, activity.imageUrl, activity.cost, activity.notes]
+                .some(value => String(value || '').trim() !== '');
+            const summaryInnerHTML = `
+                <span style="font-size:14px;">${activity.icon || '-'}</span>
+                <span style="font-size:12px;font-weight:bold;min-width:42px;">${formatTimeToHHMM(activity.time) || ''}</span>
+                <span style="font-size:13px;font-weight:600;flex:1;min-width:0;">${summaryLabel}</span>`;
+            const cardBodyHTML = `${descHTML}${imageHTML}${costHTML}${notesHTML}`;
+
+            if (hasExtraDetails) {
+                return `
+          <li style="list-style:none;margin-bottom:8px;border:1px solid #E0E0E0;border-radius:8px;background:#fff;">
+            <details>
+              <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+                ${summaryInnerHTML}
+                <span style="font-size:16px;color:#64748b;line-height:1;">&#8964;</span>
+              </summary>
+              <div style="padding:0 12px 12px 12px;">
+                ${cardBodyHTML}
+              </div>
+            </details>
+          </li>`;
+            }
+
+            return `
+          <li style="list-style:none;margin-bottom:8px;border:1px solid #E0E0E0;border-radius:8px;background:#fff;">
+            <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;">
+              ${summaryInnerHTML}
+            </div>
+          </li>`;
+        }).join('');
+
+        if (activitiesHTML) {
+            activitiesHTML = `<ul style="margin:0;padding:0;">${activitiesHTML}</ul>`;
+        }
+
+        daysHTML += `
+  <div style="margin-bottom: 10px;"> <details ${day.isCollapsed ? '' : 'open'}>
+      <summary style="display: flex; align-items: center; padding: 10px 8px; border-bottom: 1px solid #EEE; background-color: #fdfdfd; cursor: pointer;">
+        <div style="font-size:14px;line-height:1.4;font-weight:600;margin:0;">${formatDateForInlineView(day.date, dayIndex + 1)}</div>
+      </summary>
+      <div style="padding: 5px;"> <div style="padding-top: 0.5rem;">
+          ${activitiesHTML || '<p style="font-size:12px;color:#777;">\uC77C\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</p>'}
+        </div>
+      </div>
+    </details>
+  </div>`;
     });
-    const definedStyles = `body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; margin: 0; background-color: #f8f9fa; color: #212529;} main { max-width: 768px; margin-left: auto; margin-right: auto; padding: 1rem; } header { background-color: white; border-bottom: 1px solid #E0E0E0; padding: 1rem; text-align: center; } header h1 { font-size: 1.25rem; font-weight: bold; margin: 0; } summary { list-style: none; } summary::-webkit-details-marker { display: none; } summary.custom-marker { position: relative; } summary.custom-marker::before { content: '▶'; font-size: 0.8em; margin-right: 8px; display: inline-block; width: 1em; text-align: center; color: #555; transition: transform 0.2s ease-in-out; } details[open] > summary.custom-marker::before { content: '▼'; }`;
-    let styleTagHTML = ''; if (options.includeStyles) { styleTagHTML = `<style>${definedStyles}</style>`; }
-    const pageDocumentTitle = options.makePageTitleEmptyForCopy ? ' ' : (dataForInlineView.title || "여행 일정");
-    return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${pageDocumentTitle}</title>${styleTagHTML}</head><body><header><h1>${(dataForInlineView.title || "여행 일정")}</h1></header><main><div id="daysContainerReadOnly">${daysHTML || '<p style="text-align:center; padding: 20px; color: #777;">여행 일정이 없습니다.</p>'}</div></main></body></html>`;
+
+    return `
+<main style="max-width: 750px; margin: auto; padding: 0; font-family: 'Malgun Gothic', sans-serif;">
+  ${hideTitleForCopy ? '' : `<header style="padding-top: 15px;"> <h1 style="font-size: 24px; font-weight: bold;">${dataForInlineView.title || '\uC0C8 \uC5EC\uD589 \uC77C\uC815\uD45C'}</h1>
+  </header>`}
+  ${daysHTML}
+</main>`;
 }
 
 // --- Initial Setup ---
