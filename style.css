@@ -164,6 +164,20 @@ body {
     font-weight: bold;
     min-height: 21px;
 }
+.db-registered-badge {
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+}
 .card-details-area {
     flex-grow: 1;
     display: flex;
@@ -279,6 +293,7 @@ body {
 
 @media print, .saved-html-view {
     .header, .add-day-button-container, .add-activity-button, #activityModal, #confirmDeleteDayModal, .day-toggle-button, .edit-date-button, .save-date-button, .cancel-date-edit-button, .delete-day-button, #saveHtmlButton, #loadHtmlButtonTrigger, .edit-trip-title-button, .save-trip-title-button, .cancel-trip-title-edit-button, .card-actions-direct, #loadDayHtmlButtonTrigger, .save-day-button, .load-day-at-index-button, #previewButton, #loadExcelButtonTrigger { display: none !important; }
+    .internal-only-indicator, .db-registered-badge { display: none !important; }
     .main-content, .readonly-main-content { padding: 0 !important; }
     .day-section { margin-bottom: 15mm; page-break-inside: avoid; }
     .day-header-container { padding: 0; margin-bottom: 5mm; border-bottom: 2px solid black; background-color: white !important; cursor: default !important; }

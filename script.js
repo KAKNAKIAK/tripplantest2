@@ -39,6 +39,7 @@ let tripData = {
     ]
 };
 let allFetchedTrips = []; // Firestore에서 가져온 원본 목록을 저장할 변수
+let dbRegisteredActivityIds = new Set(); // UI-only: cards already saved in DB
 
 
 // --- DOM Elements ---
@@ -123,6 +124,23 @@ function showToastMessage(message, isError = false) {
     }, 3000);
 }
 
+function rebuildDbRegisteredActivityIdsFromTripData() {
+    dbRegisteredActivityIds = new Set();
+    (tripData.days || []).forEach(day => {
+        (day.activities || []).forEach(activity => {
+            if (activity && activity.id) dbRegisteredActivityIds.add(activity.id);
+        });
+    });
+}
+
+function markCurrentTripActivitiesAsDbRegistered() {
+    (tripData.days || []).forEach(day => {
+        (day.activities || []).forEach(activity => {
+            if (activity && activity.id) dbRegisteredActivityIds.add(activity.id);
+        });
+    });
+}
+
 // --- Icon SVGs ---
 const editIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
 const saveIconSVG = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
@@ -188,6 +206,16 @@ function renderActivities(activitiesListElement, activities, dayIndex) {
         const card = document.createElement('div'); card.className = 'activity-card'; card.setAttribute('data-activity-id', activity.id);
         let imageHTML = ''; if (activity.imageUrl) { imageHTML = `<img src="${activity.imageUrl}" alt="${activity.title || '활동 이미지'}" class="card-image" onerror="this.style.display='none';">`; }
         card.innerHTML = `<div class="card-time-icon-area">${activity.icon ? `<div class="card-icon">${activity.icon}</div>` : '<div class="card-icon" style="height: 28.8px;"></div>'}<div class="card-time">${formatTimeToHHMM(activity.time)}</div></div><div class="card-details-area"><div class="card-title">${activity.title || ''}</div>${activity.description ? `<div class="card-description">${activity.description}</div>` : ''}${imageHTML}${activity.cost ? `<div class="card-cost">💰 ${activity.cost}</div>` : ''}${activity.notes ? `<div class="card-notes">📝 ${activity.notes}</div>` : ''}</div><div class="card-actions-direct"><button class="icon-button card-action-icon-button sync-activity-from-db-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="관광지 DB 최신 정보로 덮어쓰기(동기화)">${syncFromDbIconSVG}</button><button class="icon-button card-action-icon-button edit-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="수정">${editIconSVG}</button><button class="icon-button card-action-icon-button duplicate-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="복제">${duplicateIconSVG}</button><button class="icon-button card-action-icon-button delete-activity-button" data-day-index="${dayIndex}" data-activity-id="${activity.id}" title="삭제">${deleteIconSVG}</button></div>`;
+        if (dbRegisteredActivityIds.has(activity.id)) {
+            const timeIconArea = card.querySelector('.card-time-icon-area');
+            if (timeIconArea) {
+                const badge = document.createElement('span');
+                badge.className = 'db-registered-badge internal-only-indicator';
+                badge.title = 'DB registered';
+                badge.textContent = 'db\uB4F1\uB85D';
+                timeIconArea.appendChild(badge);
+            }
+        }
         activitiesListElement.appendChild(card);
     });
     activitiesListElement.querySelectorAll('.sync-activity-from-db-button').forEach(button => { button.addEventListener('click', handleSyncActivityFromAttractionDb); });
@@ -268,7 +296,7 @@ function hideConfirmDeleteDayModal() { if(confirmDeleteDayModal) confirmDeleteDa
 if (confirmDeleteDayActionButton) confirmDeleteDayActionButton.addEventListener('click', () => { if (dayIndexToDelete > -1 && dayIndexToDelete < tripData.days.length) { tripData.days.splice(dayIndexToDelete, 1); recalculateAllDates(); renderTrip(); /* saveTripToFirestore(); */ } hideConfirmDeleteDayModal(); });
 if (cancelDeleteDayButton) cancelDeleteDayButton.addEventListener('click', hideConfirmDeleteDayModal);
 
-function handleDeleteActivity(event) { const button = event.currentTarget; const dayIdx = button.dataset.dayIndex; const activityIdToDelete = button.dataset.activityId; tripData.days[dayIdx].activities = tripData.days[dayIdx].activities.filter(act => act.id !== activityIdToDelete); renderTrip(); /* saveTripToFirestore(); */ }
+function handleDeleteActivity(event) { const button = event.currentTarget; const dayIdx = button.dataset.dayIndex; const activityIdToDelete = button.dataset.activityId; tripData.days[dayIdx].activities = tripData.days[dayIdx].activities.filter(act => act.id !== activityIdToDelete); dbRegisteredActivityIds.delete(activityIdToDelete); renderTrip(); /* saveTripToFirestore(); */ }
 function handleDuplicateActivity(event) { const button = event.currentTarget; const dayIdx = parseInt(button.dataset.dayIndex); const activityIdToDuplicate = button.dataset.activityId; const activityToDuplicate = tripData.days[dayIdx].activities.find(act => act.id === activityIdToDuplicate); if (activityToDuplicate) { const newActivity = { ...activityToDuplicate, id: generateId(), title: `${activityToDuplicate.title} (복사본)` }; const originalIndex = tripData.days[dayIdx].activities.findIndex(act => act.id === activityIdToDuplicate); tripData.days[dayIdx].activities.splice(originalIndex + 1, 0, newActivity); renderTrip(); /* saveTripToFirestore(); */ } }
 
 async function handleSyncActivityFromAttractionDb(event) {
@@ -313,13 +341,15 @@ async function saveTripToFirestore(isSaveAsNew = false) {
         if (currentTripId && !isSaveAsNew) {
             await db.collection("tripplan").doc(currentTripId).set(dataToSave, { merge: true });
             tripData.title = currentTitle;
-            renderHeaderTitle();
+            markCurrentTripActivitiesAsDbRegistered();
+            renderTrip();
             showToastMessage(`'${currentTitle}' 일정이 Firestore에 업데이트되었습니다.`);
         } else {
             const docRef = await db.collection("tripplan").add(dataToSave);
             currentTripId = docRef.id;
             tripData.title = currentTitle;
-            renderHeaderTitle();
+            markCurrentTripActivitiesAsDbRegistered();
+            renderTrip();
             showToastMessage(`'${currentTitle}' 일정이 새롭게 Firestore에 저장되었습니다. (ID: ${currentTripId})`);
         }
     } catch (error) {
@@ -347,6 +377,7 @@ async function deleteTripFromFirestore(tripIdToDelete, tripTitle) {
 
         if (currentTripId === tripIdToDelete) {
             currentTripId = null;
+            dbRegisteredActivityIds.clear();
             tripData = { title: "새 여행 일정표", editingTitle: false, days: [{ date: dateToYyyyMmDd(new Date()), activities: [], isCollapsed: false, editingDate: false }] };
             renderTrip();
         }
@@ -367,6 +398,7 @@ async function loadTripFromFirestore(tripIdToLoad) {
     if (!tripIdToLoad) {
         showToastMessage("불러올 일정 문서 ID가 없습니다. 새 일정을 시작합니다.", true);
         tripData = { title: "새 여행 일정표", editingTitle: false, days: [{ date: dateToYyyyMmDd(new Date()), activities: [], isCollapsed: false, editingDate: false }] };
+        dbRegisteredActivityIds.clear();
         currentTripId = null; renderTrip(); return;
     }
     try {
@@ -384,11 +416,13 @@ async function loadTripFromFirestore(tripIdToLoad) {
             if (tripData.days.length === 0) { tripData.days.push({ date: dateToYyyyMmDd(new Date()), activities: [], isCollapsed: false, editingDate: false }); }
             if (tripData.days.length > 0 && tripData.days[0]) { tripData.days[0].isCollapsed = false; }
             currentTripId = tripIdToLoad;
+            rebuildDbRegisteredActivityIdsFromTripData();
             renderTrip();
             showToastMessage(`'${tripData.title}' 일정을 Firestore에서 불러왔습니다.`);
         } else {
             showToastMessage(`ID '${tripIdToLoad}'에 해당하는 일정을 찾을 수 없습니다. 새 일정을 시작합니다.`, true);
             tripData = { title: "새 여행 일정표", editingTitle: false, days: [{ date: dateToYyyyMmDd(new Date()), activities: [], isCollapsed: false, editingDate: false }] };
+            dbRegisteredActivityIds.clear();
             currentTripId = null; renderTrip();
         }
     } catch (error) { console.error("Error loading trip from Firestore: ", error); showToastMessage("일정 불러오기 중 오류가 발생했습니다.", true); }
